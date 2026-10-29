@@ -15,11 +15,12 @@ tasks.test {
 }
 
 ksp {
-    arg("summaryOutputDir", "${projectDir}/.github")
+    arg("summaryOutputDir", "$projectDir/.github")
 }
 
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
     compilerOptions {
+        incremental = true
         freeCompilerArgs.addAll(
             "-opt-in=kotlin.RequiresOptIn",
             "-opt-in=kotlin.contracts.ExperimentalContracts",
@@ -30,7 +31,7 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach 
 }
 
 kotlin {
-    jvmToolchain(8)
+    jvmToolchain(21)
     explicitApiWarning()
     sourceSets["main"].kotlin.srcDirs("build/generated/ksp/main/kotlin")
 }

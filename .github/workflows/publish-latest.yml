@@ -1,0 +1,80 @@
+name: Publish latest parser bundle
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'src/main/**'
+      - 'build.gradle.kts'
+      - 'gradle/**'
+      - 'gradle.properties'
+      - 'kotatsu-parsers-ksp/**'
+      - '.github/workflows/publish-latest.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-latest
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - name: Set up Java
+        uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165 # v5.0.0
+        with:
+          java-version: '21'
+          distribution: temurin
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4.4.3
+
+      - name: Compile and package parser bundle
+        run: ./gradlew --no-daemon compileKotlin jar
+
+      - name: Prepare release files
+        shell: bash
+        run: |
+          set -euo pipefail
+          jar_path="$(find build/libs -maxdepth 1 -type f -name '*.jar' ! -name '*-plain.jar' -print -quit)"
+          test -n "$jar_path"
+          cp "$jar_path" kotatsu-parsers.jar
+          sha256sum kotatsu-parsers.jar | awk '{print $1}' > kotatsu-parsers.jar.sha256
+          version="${GITHUB_SHA:0:12}"
+          sha256="$(cat kotatsu-parsers.jar.sha256)"
+          python3 - <<'PY'
+          import json, os
+          with open("kotatsu-parsers.jar.sha256", encoding="utf-8") as f:
+              sha256 = f.read().strip()
+          manifest = {
+              "version": os.environ["GITHUB_SHA"][:12],
+              "apiVersion": 1,
+              "minAppVersion": 1,
+              "bundleUrl": f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/releases/download/latest/kotatsu-parsers.jar",
+              "sha256": sha256,
+              "commit": os.environ["GITHUB_SHA"],
+          }
+          with open("parser-manifest.json", "w", encoding="utf-8") as f:
+              json.dump(manifest, f, indent=2)
+              f.write("\n")
+          PY
+
+      - name: Publish latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete latest --yes --cleanup-tag || true
+          gh release create latest \
+            kotatsu-parsers.jar \
+            kotatsu-parsers.jar.sha256 \
+            parser-manifest.json \
+            --title "Latest parser bundle" \
+            --notes "Built from commit $GITHUB_SHA." \
+            --target "$GITHUB_SHA"

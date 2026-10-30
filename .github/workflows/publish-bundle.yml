@@ -78,7 +78,7 @@ jobs:
           notes=$(cat <<EOF
           Built from commit #${GITHUB_SHA}
 
-          SHA-256:
+          SHA-256
           \`\`\`plaintext
           ${BUNDLE_SHA256:-$(sha256sum kotatsu-parsers.jar | cut -d' ' -f1)}
           \`\`\`

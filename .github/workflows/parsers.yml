@@ -1,4 +1,4 @@
-name: Publish parser bundle
+name: Parsers
 
 on:
   push:
@@ -10,7 +10,10 @@ on:
       - 'gradle/**'
       - 'gradle.properties'
       - 'kotatsu-parsers-ksp/**'
-      - '.github/workflows/publish-bundle.yml'
+      - '.github/workflows/parsers.yml'
+  pull_request:
+    paths:
+      - 'src/main/kotlin/org/koitharu/kotatsu/parsers/**'
   workflow_dispatch:
 
 permissions:
@@ -22,11 +25,33 @@ env:
     -Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g
 
 concurrency:
-  group: publish-bundle
+  group: parsers-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  check:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.0.0
+        with:
+          persist-credentials: false
+
+      - name: Set up Java
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
+        with:
+          java-version: '21'
+          distribution: temurin
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v5
+
+      - name: Compile parsers
+        run: ./gradlew compileKotlin
+
   publish:
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository

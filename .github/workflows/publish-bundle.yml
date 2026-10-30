@@ -63,14 +63,17 @@ jobs:
           export SHORT_SHA="$short_sha"
           previous_sha="$(gh release view latest \
             --json targetCommitish --jq .targetCommitish 2>/dev/null || true)"
+          commit_base="https://github.com/ShiroKazane/kotatsu-parsers/commit"
           if [ -n "$previous_sha" ] && \
             git cat-file -e "$previous_sha^{commit}" 2>/dev/null; then
             commit_range="$previous_sha..$GITHUB_SHA"
-            changes="$(git log --no-merges \
-              --pretty=format:-\ %s\ \(%h\) "$commit_range")"
+            changes="$(git log --no-merges --abbrev=7 \
+              --pretty=format:"- %s ([%h]($commit_base/%H))" \
+              "$commit_range")"
           else
-            changes="$(git log -1 \
-              --pretty=format:-\ %s\ \(%h\) "$GITHUB_SHA")"
+            changes="$(git log -1 --abbrev=7 \
+              --pretty=format:"- %s ([%h]($commit_base/%H))" \
+              "$GITHUB_SHA")"
           fi
           export CHANGES="$changes"
           {

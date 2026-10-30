@@ -28,13 +28,13 @@ jobs:
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
 
       - name: Set up Java
-        uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165 # v5.0.0
+        uses: actions/setup-java@v5
         with:
           java-version: '21'
           distribution: temurin
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4.4.3
+        uses: gradle/actions/setup-gradle@v4
 
       - name: Compile and package parser bundle
         run: ./gradlew --no-daemon compileKotlin jar
@@ -43,21 +43,23 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          jar_path="$(find build/libs -maxdepth 1 -type f -name '*.jar' ! -name '*-plain.jar' -print -quit)"
+          jar_path="$(find build/libs -maxdepth 1 -type f \
+            -name '*.jar' ! -name '*-plain.jar' -print -quit)"
           test -n "$jar_path"
           cp "$jar_path" kotatsu-parsers.jar
-          sha256sum kotatsu-parsers.jar | awk '{print $1}' > kotatsu-parsers.jar.sha256
-          version="${GITHUB_SHA:0:12}"
-          sha256="$(cat kotatsu-parsers.jar.sha256)"
+          sha256="$(sha256sum kotatsu-parsers.jar | cut -d' ' -f1)"
+          export BUNDLE_SHA256="$sha256"
           python3 - <<'PY'
           import json, os
-          with open("kotatsu-parsers.jar.sha256", encoding="utf-8") as f:
-              sha256 = f.read().strip()
+          sha256 = os.environ["BUNDLE_SHA256"]
           manifest = {
-              "version": os.environ["GITHUB_SHA"][:12],
+              "version": int(os.environ["GITHUB_RUN_NUMBER"]),
               "apiVersion": 1,
               "minAppVersion": 1,
-              "bundleUrl": f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/releases/download/latest/kotatsu-parsers.jar",
+              "bundleUrl": (
+                  f"https://github.com/{os.environ['GITHUB_REPOSITORY']}"
+                  "/releases/download/parser-latest/kotatsu-parsers.jar"
+              ),
               "sha256": sha256,
               "commit": os.environ["GITHUB_SHA"],
           }
@@ -66,15 +68,24 @@ jobs:
               f.write("\n")
           PY
 
-      - name: Publish release
+      - name: Publish parser release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete latest --yes --cleanup-tag || true
-          gh release create latest \
+          set -euo pipefail
+          short_sha="${GITHUB_SHA:0:6}"
+          gh release delete parser-latest --yes --cleanup-tag || true
+          notes=$(cat <<EOF
+          Build commit:
+          \`${GITHUB_SHA}\`
+
+          SHA-256:
+          \`${BUNDLE_SHA256:-$(sha256sum kotatsu-parsers.jar | cut -d' ' -f1)}\`
+          EOF
+          )
+          gh release create parser-latest \
             kotatsu-parsers.jar \
-            kotatsu-parsers.jar.sha256 \
             parser-manifest.json \
-            --title "Parser bundle" \
-            --notes "Built from commit $GITHUB_SHA." \
+            --title "Parser Build ${short_sha}" \
+            --notes "$notes" \
             --target "$GITHUB_SHA"

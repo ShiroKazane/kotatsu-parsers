@@ -1,4 +1,4 @@
-name: Check & Test latest parsers
+name: Check & Test parsers
 
 on:
   push:

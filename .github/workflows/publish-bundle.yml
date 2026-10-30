@@ -10,7 +10,7 @@ on:
       - 'gradle/**'
       - 'gradle.properties'
       - 'kotatsu-parsers-ksp/**'
-      - '.github/workflows/publish-latest.yml'
+      - '.github/workflows/publish-bundle.yml'
   workflow_dispatch:
 
 permissions:

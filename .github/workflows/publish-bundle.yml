@@ -49,7 +49,7 @@ jobs:
         run: |
           set -euo pipefail
           jar_path="$(find build/libs -maxdepth 1 -type f \
-            -name '*.jar' ! -name '*-plain.jar' -print -quit)"
+            -name "*.jar" ! -name "*-plain.jar" -print -quit)"
           test -n "$jar_path"
           cp "$jar_path" kotatsu-parsers.jar
           sha256="$(sha256sum kotatsu-parsers.jar | cut -d' ' -f1)"
@@ -73,26 +73,19 @@ jobs:
             printf 'PARSER_CHANGES<<EOF\n%s\nEOF\n' "$changes"
             printf 'BUNDLE_SHA256=%s\n' "$sha256"
           } >> "$GITHUB_ENV"
-          python3 - <<'PY
-          import json, os
-          sha256 = os.environ["BUNDLE_SHA256"]
-          manifest = {
-              "version": int(os.environ["GITHUB_RUN_NUMBER"]),
-              "apiVersion": 1,
-              "minAppVersion": 1,
-              "bundleUrl": (
-                  f"https://github.com/{os.environ['GITHUB_REPOSITORY']}"
-                  "/releases/download/latest/kotatsu-parsers.jar"
-              ),
-              "sha256": sha256,
-              "commit": os.environ["GITHUB_SHA"],
-              "releaseName": f"Parser Build {os.environ['SHORT_SHA']}",
-              "changes": os.environ["CHANGES"],
-          }
-          with open("parser-manifest.json", "w", encoding="utf-8") as f:
-              json.dump(manifest, f, indent=2)
-              f.write("\n")
-          PY
+          jq -n \
+            --argjson version "$GITHUB_RUN_NUMBER" \
+            --arg bundleUrl "https://github.com/$GITHUB_REPOSITORY" \
+            --arg bundlePath "/releases/download/latest/kotatsu-parsers.jar" \
+            --arg sha256 "$sha256" \
+            --arg commit "$GITHUB_SHA" \
+            --arg releaseName "Parser Build $short_sha" \
+            --arg changes "$changes" \
+            '{version: $version, apiVersion: 1, minAppVersion: 1,
+              bundleUrl: ($bundleUrl + $bundlePath), sha256: $sha256,
+              commit: $commit, releaseName: $releaseName,
+              changes: $changes}' \
+            > parser-manifest.json
 
       - name: Publish parser release
         env:

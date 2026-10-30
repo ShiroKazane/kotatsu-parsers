@@ -61,10 +61,10 @@ jobs:
           if [ -n "$previous_sha" ] && \
             git cat-file -e "$previous_sha^{commit}" 2>/dev/null; then
             changes="$(git log --no-merges \
-              --pretty=format:'- %s (%h)' "$previous_sha..$GITHUB_SHA")"
+              --pretty=format:-\ %s\ \(%h\) "$previous_sha..$GITHUB_SHA")"
           else
             changes="$(git log -1 \
-              --pretty=format:'- %s (%h)' "$GITHUB_SHA")"
+              --pretty=format:-\ %s\ \(%h\) "$GITHUB_SHA")"
           fi
           export CHANGES="$changes"
           {

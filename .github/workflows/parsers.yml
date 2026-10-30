@@ -1,4 +1,4 @@
-name: Parsers
+name: Publish parser bundle
 
 on:
   push:

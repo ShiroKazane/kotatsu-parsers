@@ -16,6 +16,11 @@ on:
 permissions:
   contents: write
 
+env:
+  GRADLE_OPTS: >-
+    -Dorg.gradle.workers.max=4
+    -Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g
+
 concurrency:
   group: publish-bundle
   cancel-in-progress: true
@@ -40,7 +45,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v5
 
       - name: Compile and package parser bundle
-        run: ./gradlew --no-daemon compileKotlin jar
+        run: ./gradlew compileKotlin jar
 
       - name: Prepare release files
         shell: bash

@@ -2,6 +2,7 @@ package org.koitharu.kotatsu.parsers.site.id
 
 import okhttp3.Headers
 import org.jsoup.Jsoup
+import org.jsoup.nodes.Entities
 import org.json.JSONArray
 import org.json.JSONObject
 import org.koitharu.kotatsu.parsers.MangaLoaderContext
@@ -132,8 +133,8 @@ internal class DoujinDesuParser(
 
     private fun cleanDescription(value: String): String? {
         if (value.isBlank()) return null
-        val document = Jsoup.parseBodyFragment(value)
-        document.select("script, style, img, iframe, a[href]").remove()
+        val document = Jsoup.parseBodyFragment(Entities.unescape(value))
+        document.select("a, script, style, img, iframe, video, source").remove()
         return AD_URL.replace(document.text(), "").replace(WHITESPACE, " ").trim().nullIfEmpty()
     }
 

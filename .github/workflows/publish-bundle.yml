@@ -74,9 +74,10 @@ jobs:
         run: |
           set -euo pipefail
           short_sha="${GITHUB_SHA:0:6}"
+          commit_url="https://github.com/ShiroKazane/kotatsu-parsers/commit/${GITHUB_SHA}"
           gh release delete latest --yes --cleanup-tag || true
           notes=$(cat <<EOF
-          Built from commit #${GITHUB_SHA}
+          Built from commit [${short_sha}](${commit_url})
 
           SHA-256
           \`\`\`plaintext

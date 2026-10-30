@@ -134,7 +134,7 @@ internal class DoujinDesuParser(
         if (value.isBlank()) return null
         val document = Jsoup.parseBodyFragment(value)
         document.select("script, style, img, iframe, a[href]").remove()
-        return AD_URL.replace(document.text()).replace(WHITESPACE, " ").trim().nullIfEmpty()
+        return AD_URL.replace(document.text(), "").replace(WHITESPACE, " ").trim().nullIfEmpty()
     }
 
     private fun JSONObject.authorNames(): Set<String> =

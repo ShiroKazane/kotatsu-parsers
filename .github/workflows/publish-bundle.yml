@@ -76,11 +76,12 @@ jobs:
           short_sha="${GITHUB_SHA:0:6}"
           gh release delete latest --yes --cleanup-tag || true
           notes=$(cat <<EOF
-          Build commit:
-          \`${GITHUB_SHA}\`
+          Built from commit #${GITHUB_SHA}
 
           SHA-256:
-          \`${BUNDLE_SHA256:-$(sha256sum kotatsu-parsers.jar | cut -d' ' -f1)}\`
+          \`\`\`plaintext
+          ${BUNDLE_SHA256:-$(sha256sum kotatsu-parsers.jar | cut -d' ' -f1)}
+          \`\`\`
           EOF
           )
           gh release create latest \

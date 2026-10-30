@@ -28,7 +28,7 @@ jobs:
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
 
       - name: Set up Java
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165
         with:
           java-version: '21'
           distribution: temurin
@@ -88,5 +88,6 @@ jobs:
             kotatsu-parsers.jar \
             parser-manifest.json \
             --title "Parser Build ${short_sha}" \
+            --latest \
             --notes "$notes" \
             --target "$GITHUB_SHA"

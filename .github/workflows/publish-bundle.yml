@@ -58,7 +58,7 @@ jobs:
               "minAppVersion": 1,
               "bundleUrl": (
                   f"https://github.com/{os.environ['GITHUB_REPOSITORY']}"
-                  "/releases/download/parser-latest/kotatsu-parsers.jar"
+                  "/releases/download/latest/kotatsu-parsers.jar"
               ),
               "sha256": sha256,
               "commit": os.environ["GITHUB_SHA"],
@@ -74,7 +74,7 @@ jobs:
         run: |
           set -euo pipefail
           short_sha="${GITHUB_SHA:0:6}"
-          gh release delete parser-latest --yes --cleanup-tag || true
+          gh release delete latest --yes --cleanup-tag || true
           notes=$(cat <<EOF
           Build commit:
           \`${GITHUB_SHA}\`
@@ -83,7 +83,7 @@ jobs:
           \`${BUNDLE_SHA256:-$(sha256sum kotatsu-parsers.jar | cut -d' ' -f1)}\`
           EOF
           )
-          gh release create parser-latest \
+          gh release create latest \
             kotatsu-parsers.jar \
             parser-manifest.json \
             --title "Parser Build ${short_sha}" \

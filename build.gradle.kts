@@ -19,6 +19,10 @@ ksp {
     arg("summaryOutputDir", "$projectDir/.github")
 }
 
+tasks.withType<JavaCompile>().configureEach {
+    options.release.set(11)
+}
+
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
     compilerOptions {
         incremental = true

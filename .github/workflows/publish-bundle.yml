@@ -10,7 +10,7 @@ on:
       - 'gradle/**'
       - 'gradle.properties'
       - 'kotatsu-parsers-ksp/**'
-      - '.github/workflows/parsers.yml'
+      - '.github/workflows/publish-bundle.yml'
   pull_request:
     paths:
       - 'src/main/kotlin/org/koitharu/kotatsu/parsers/**'

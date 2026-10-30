@@ -1,6 +1,7 @@
 package org.koitharu.kotatsu.parsers.site.id
 
 import okhttp3.Headers
+import org.jsoup.Jsoup
 import org.json.JSONArray
 import org.json.JSONObject
 import org.koitharu.kotatsu.parsers.MangaLoaderContext
@@ -106,7 +107,7 @@ internal class DoujinDesuParser(
             url = json.getString("slug"),
             publicUrl = "/manga/${json.getString("slug")}".toAbsoluteUrl(domain),
             rating = (json.optDouble("rating", RATING_UNKNOWN.toDouble()) / 10.0).toFloat(),
-            contentRating = if (json.optString("type") == "doujinshi") ContentRating.ADULT else null,
+            contentRating = ContentRating.ADULT,
             coverUrl = json.optString("cover_url").nullIfEmpty(),
             tags =
                 json
@@ -124,10 +125,17 @@ internal class DoujinDesuParser(
                 },
             authors = setOfNotNull(json.optString("author").nullIfEmpty(), json.optString("artist").nullIfEmpty()),
             largeCoverUrl = json.optString("banner_url").nullIfEmpty(),
-            description = json.optString("description").nullIfEmpty(),
+            description = cleanDescription(json.optString("description")),
             chapters = null,
             source = source,
         )
+
+    private fun cleanDescription(value: String): String? {
+        if (value.isBlank()) return null
+        val document = Jsoup.parseBodyFragment(value)
+        document.select("a, script, style, img, iframe").remove()
+        return document.text().trim().nullIfEmpty()
+    }
 
     private fun JSONArray.mapChapters(): List<MangaChapter> =
         (0 until length()).mapNotNull { index ->

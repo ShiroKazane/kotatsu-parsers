@@ -1,10 +1,10 @@
 package org.koitharu.kotatsu.parsers.site.id
 
 import okhttp3.Headers
-import org.jsoup.Jsoup
-import org.jsoup.nodes.Entities
 import org.json.JSONArray
 import org.json.JSONObject
+import org.jsoup.Jsoup
+import org.jsoup.nodes.Entities
 import org.koitharu.kotatsu.parsers.MangaLoaderContext
 import org.koitharu.kotatsu.parsers.MangaSourceParser
 import org.koitharu.kotatsu.parsers.config.ConfigKey
@@ -16,7 +16,7 @@ import java.util.EnumSet
 import java.util.Locale
 import java.util.UUID
 
-@MangaSourceParser("DOUJINDESU", "Doujindesu.XXX", "id")
+@MangaSourceParser("DOUJINDESU", "DoujinDesu", "id")
 internal class DoujinDesuParser(
     context: MangaLoaderContext,
 ) : PagedMangaParser(context, MangaParserSource.DOUJINDESU, pageSize = 24) {
@@ -135,18 +135,26 @@ internal class DoujinDesuParser(
         if (value.isBlank()) return null
         val document = Jsoup.parseBodyFragment(Entities.unescape(value))
         document.select("a, script, style, img, iframe, video, source").remove()
-        return AD_URL.replace(document.text(), "").replace(WHITESPACE, " ").trim().nullIfEmpty()
+        return AD_URL
+            .replace(document.text(), "")
+            .replace(WHITESPACE, " ")
+            .trim()
+            .nullIfEmpty()
     }
 
     private fun JSONObject.authorNames(): Set<String> =
         listOf("author", "artist", "group", "groups", "circle")
             .flatMap { key ->
                 when (val value = opt(key)) {
-                    is JSONArray ->
+                    is JSONArray -> {
                         (0 until value.length()).mapNotNull { index ->
                             value.opt(index).metadataName().nullIfEmpty()
                         }
-                    else -> listOf(value.metadataName())
+                    }
+
+                    else -> {
+                        listOf(value.metadataName())
+                    }
                 }
             }.mapNotNullToSet { it.trim().nullIfEmpty() }
 

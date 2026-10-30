@@ -123,7 +123,7 @@ internal class DoujinDesuParser(
                     "completed" -> MangaState.FINISHED
                     else -> null
                 },
-            authors = setOfNotNull(json.optString("author").nullIfEmpty(), json.optString("artist").nullIfEmpty()),
+            authors = json.authorNames(),
             largeCoverUrl = json.optString("banner_url").nullIfEmpty(),
             description = cleanDescription(json.optString("description")),
             chapters = null,
@@ -133,8 +133,32 @@ internal class DoujinDesuParser(
     private fun cleanDescription(value: String): String? {
         if (value.isBlank()) return null
         val document = Jsoup.parseBodyFragment(value)
-        document.select("a, script, style, img, iframe").remove()
-        return document.text().trim().nullIfEmpty()
+        document.select("script, style, img, iframe, a[href]").remove()
+        return AD_URL.replace(document.text()).replace(WHITESPACE, " ").trim().nullIfEmpty()
+    }
+
+    private fun JSONObject.authorNames(): Set<String> =
+        listOf("author", "artist", "group", "groups", "circle")
+            .flatMap { key ->
+                when (val value = opt(key)) {
+                    is JSONArray ->
+                        (0 until value.length()).mapNotNull { index ->
+                            value.opt(index).metadataName().nullIfEmpty()
+                        }
+                    else -> listOf(value.metadataName())
+                }
+            }.mapNotNullToSet { it.trim().nullIfEmpty() }
+
+    private fun Any?.metadataName(): String =
+        when (this) {
+            is JSONObject -> optString("name").ifEmpty { optString("title") }
+            null -> ""
+            else -> toString()
+        }
+
+    private companion object {
+        val AD_URL = Regex("(?i)\\b(?:https?://|www\\.)\\S+")
+        val WHITESPACE = Regex("\\s+")
     }
 
     private fun JSONArray.mapChapters(): List<MangaChapter> =

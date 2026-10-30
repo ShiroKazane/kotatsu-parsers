@@ -26,6 +26,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
 
       - name: Set up Java
         uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
@@ -41,6 +44,8 @@ jobs:
 
       - name: Prepare release files
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           jar_path="$(find build/libs -maxdepth 1 -type f \
@@ -48,8 +53,26 @@ jobs:
           test -n "$jar_path"
           cp "$jar_path" kotatsu-parsers.jar
           sha256="$(sha256sum kotatsu-parsers.jar | cut -d' ' -f1)"
+          short_sha="${GITHUB_SHA:0:7}"
           export BUNDLE_SHA256="$sha256"
-          python3 - <<'PY'
+          export SHORT_SHA="$short_sha"
+          previous_sha="$(gh release view latest \
+            --json targetCommitish --jq .targetCommitish 2>/dev/null || true)"
+          if [ -n "$previous_sha" ] && \
+            git cat-file -e "$previous_sha^{commit}" 2>/dev/null; then
+            changes="$(git log --no-merges \
+              --pretty=format:'- %s (%h)' "$previous_sha..$GITHUB_SHA")"
+          else
+            changes="$(git log -1 \
+              --pretty=format:'- %s (%h)' "$GITHUB_SHA")"
+          fi
+          export CHANGES="$changes"
+          {
+            printf 'PARSER_RELEASE_NAME=%s\n' "Parser Build $short_sha"
+            printf 'PARSER_CHANGES<<EOF\n%s\nEOF\n' "$changes"
+            printf 'BUNDLE_SHA256=%s\n' "$sha256"
+          } >> "$GITHUB_ENV"
+          python3 - <<'PY
           import json, os
           sha256 = os.environ["BUNDLE_SHA256"]
           manifest = {
@@ -62,6 +85,8 @@ jobs:
               ),
               "sha256": sha256,
               "commit": os.environ["GITHUB_SHA"],
+              "releaseName": f"Parser Build {os.environ['SHORT_SHA']}",
+              "changes": os.environ["CHANGES"],
           }
           with open("parser-manifest.json", "w", encoding="utf-8") as f:
               json.dump(manifest, f, indent=2)
@@ -73,15 +98,19 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          short_sha="${GITHUB_SHA:0:6}"
+          short_sha="${GITHUB_SHA:0:7}"
           commit_url="https://github.com/ShiroKazane/kotatsu-parsers/commit/${GITHUB_SHA}"
           gh release delete latest --yes --cleanup-tag || true
           notes=$(cat <<EOF
+          ## Changes
+
+          ${PARSER_CHANGES}
+
           Built from commit [${short_sha}](${commit_url})
 
           SHA-256
           \`\`\`plaintext
-          ${BUNDLE_SHA256:-$(sha256sum kotatsu-parsers.jar | cut -d' ' -f1)}
+          ${BUNDLE_SHA256}
           \`\`\`
           EOF
           )

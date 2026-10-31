@@ -66,11 +66,27 @@ jobs:
           java-version: '21'
           distribution: temurin
 
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: ''
+
+      - name: Install Android SDK packages
+        run: sdkmanager 'platforms;android-36' 'build-tools;35.0.0'
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v5
 
       - name: Compile and package parser bundle
         run: ./gradlew compileKotlin jar
+
+      - name: Convert parser bundle to DEX
+        run: |
+          set -euo pipefail
+          mkdir -p bundle-dex
+          d8 --lib "$ANDROID_HOME/platforms/android-36/android.jar" \
+            --output bundle-dex build/libs/*-all.jar
+          (cd bundle-dex && zip -q ../kotatsu-parsers.jar classes.dex)
 
       - name: Prepare release files
         shell: bash

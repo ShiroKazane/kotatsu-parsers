@@ -89,9 +89,22 @@ jobs:
           jar_path="$(find build/libs -maxdepth 1 -type f \
             -name '*.jar' ! -name '*-plain.jar' -print -quit)"
           test -n "$jar_path"
+          rm -rf bundle-classes bundle-dex bundle-input.jar
+          mkdir -p bundle-classes
+          unzip -qo "$jar_path" -d bundle-classes
+          # Types shared with the host app must be resolved from the host class
+          # loader, otherwise class identity breaks across class loaders.
+          api="bundle-classes/org/koitharu/kotatsu/parsers"
+          shared="MangaLoaderContext MangaParser"
+          shared="$shared MangaParserSource ParserBundleProvider"
+          for cls in $shared; do
+            rm -f "$api/$cls.class"
+          done
+          rm -rf "$api/model"
+          ( cd bundle-classes && jar cf ../bundle-input.jar . )
           mkdir -p bundle-dex
           d8 --lib "$ANDROID_HOME/platforms/android-36/android.jar" \
-            --output bundle-dex "$jar_path"
+            --output bundle-dex bundle-input.jar
           zip -q -j "$jar_path" bundle-dex/classes.dex
 
       - name: Prepare release files

@@ -83,13 +83,16 @@ jobs:
       - name: Compile and package parser bundle
         run: ./gradlew compileKotlin jar
 
-      - name: Convert parser bundle to DEX
+      - name: Add DEX to JAR bundle
         run: |
           set -euo pipefail
+          jar_path="$(find build/libs -maxdepth 1 -type f \
+            -name '*.jar' ! -name '*-plain.jar' -print -quit)"
+          test -n "$jar_path"
           mkdir -p bundle-dex
           d8 --lib "$ANDROID_HOME/platforms/android-36/android.jar" \
-            --output bundle-dex build/libs/*-all.jar
-          (cd bundle-dex && zip -q ../kotatsu-parsers.jar classes.dex)
+            --output bundle-dex "$jar_path"
+          zip -q -j "$jar_path" bundle-dex/classes.dex
 
       - name: Prepare release files
         shell: bash

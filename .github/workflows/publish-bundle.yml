@@ -54,7 +54,7 @@ jobs:
         run: ./gradlew compileKotlin
 
   publish:
-    if: github.event_name != 'pull_request'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository

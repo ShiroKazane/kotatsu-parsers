@@ -48,11 +48,12 @@ class ParserProcessor(
                 logger.warn(e.toString(), null)
                 null
             }
-        val totalCount = sourcesFile?.writer().use { sourcesWriter ->
-            factoryFile?.writer().use { factoryWriter ->
-                writeContent(sourcesWriter, factoryWriter, symbols)
+        val totalCount =
+            sourcesFile?.writer().use { sourcesWriter ->
+                factoryFile?.writer().use { factoryWriter ->
+                    writeContent(sourcesWriter, factoryWriter, symbols)
+                }
             }
-        }
         writeSummary(totalCount)
         return ret
     }
@@ -67,50 +68,58 @@ class ParserProcessor(
         }
         factoryWriter?.write(
             """
-			package org.koitharu.kotatsu.parsers
+            package org.koitharu.kotatsu.parsers
 
-			import org.koitharu.kotatsu.parsers.model.MangaParserSource
-			import org.koitharu.kotatsu.parsers.core.MangaParserWrapper
+            import org.koitharu.kotatsu.parsers.model.MangaParserSource
+            import org.koitharu.kotatsu.parsers.core.MangaParserWrapper
 
-			internal fun MangaParserSource.newParser(context: MangaLoaderContext): MangaParser = when (this) {
+            public object GeneratedParserBundleProvider : ParserBundleProvider {
+                override fun sources(): Array<MangaParserSource> = MangaParserSource.entries.toTypedArray()
 
-			""".trimIndent(),
+                override fun create(context: MangaLoaderContext, sourceName: String): MangaParser =
+                    MangaParserSource.valueOf(sourceName).newParser(context)
+            }
+
+            internal fun MangaParserSource.newParser(context: MangaLoaderContext): MangaParser = when (this) {
+
+            """.trimIndent(),
         )
         sourcesWriter?.write(
             """
-			package org.koitharu.kotatsu.parsers.model
+            package org.koitharu.kotatsu.parsers.model
 
-			public enum class MangaParserSource(
-				public val title: String,
-				public val locale: String,
-				public val contentType: ContentType,
-				public val isBroken: Boolean,
-			): MangaSource {
+            public enum class MangaParserSource(
+            	public val title: String,
+            	public val locale: String,
+            	public val contentType: ContentType,
+            	public val isBroken: Boolean,
+            ): MangaSource {
 
-			""".trimIndent(),
+            """.trimIndent(),
         )
 
         val visitor = ParserVisitor(sourcesWriter, factoryWriter)
-        val totalCount = symbols
-            .filter { it is KSClassDeclaration && it.validate() }
-            .onEach { it.accept(visitor, Unit) }
-            .count()
+        val totalCount =
+            symbols
+                .filter { it is KSClassDeclaration && it.validate() }
+                .onEach { it.accept(visitor, Unit) }
+                .count()
 
         factoryWriter?.write(
             """
-			}.let {
-				require(it.source == this) {
-					"Cannot instantiate manga parser: ${'$'}name mapped to ${'$'}{it.source}"
-				}
-				MangaParserWrapper(it)
-			}
-			""".trimIndent(),
+            }.let {
+            	require(it.source == this) {
+            		"Cannot instantiate manga parser: ${'$'}name mapped to ${'$'}{it.source}"
+            	}
+            	MangaParserWrapper(it)
+            }
+            """.trimIndent(),
         )
         sourcesWriter?.write(
             """
-				;
-			}
-			""".trimIndent(),
+            	;
+            }
+            """.trimIndent(),
         )
         return totalCount
     }

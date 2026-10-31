@@ -74,7 +74,7 @@ internal class DoujinDesuParser(
             id = manga.id,
             url = manga.url,
             publicUrl = manga.publicUrl,
-            chapters = json.optJSONArray("chapters")?.mapChapters() ?: emptyList(),
+            chapters = json.optJSONArray("chapters")?.mapChapters()?.reversed() ?: emptyList(),
         )
     }
 
@@ -142,8 +142,16 @@ internal class DoujinDesuParser(
             .nullIfEmpty()
     }
 
-    private fun JSONObject.authorNames(): Set<String> =
-        listOf("author", "artist", "group", "groups", "circle")
+    private fun JSONObject.authorNames(): Set<String> {
+        val authors = namesOf("author")
+        if (authors.isNotEmpty()) return authors
+        val groups = namesOf("group", "groups", "circle")
+        if (groups.isNotEmpty()) return groups
+        return setOf(UNKNOWN_NAME)
+    }
+
+    private fun JSONObject.namesOf(vararg keys: String): Set<String> =
+        keys
             .flatMap { key ->
                 when (val value = opt(key)) {
                     is JSONArray -> {
@@ -152,9 +160,7 @@ internal class DoujinDesuParser(
                         }
                     }
 
-                    else -> {
-                        listOf(value.metadataName())
-                    }
+                    else -> listOf(value.metadataName())
                 }
             }.mapNotNullToSet { it.trim().nullIfEmpty() }
 
@@ -168,6 +174,7 @@ internal class DoujinDesuParser(
     private companion object {
         val AD_URL = Regex("(?i)\\b(?:https?://|www\\.)\\S+")
         val WHITESPACE = Regex("\\s+")
+        const val UNKNOWN_NAME = "-"
     }
 
     private fun JSONArray.mapChapters(): List<MangaChapter> =

@@ -120,8 +120,8 @@ internal class DoujinDesuParser(
                     }.orEmpty(),
             state =
                 when (json.optString("status")) {
-                    "ongoing" -> MangaState.ONGOING
-                    "completed" -> MangaState.FINISHED
+                    "ongoing", "publishing" -> MangaState.ONGOING
+                    "completed", "finished" -> MangaState.FINISHED
                     else -> null
                 },
             authors = json.authorNames(),

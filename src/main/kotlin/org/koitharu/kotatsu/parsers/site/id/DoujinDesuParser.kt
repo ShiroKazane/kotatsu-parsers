@@ -143,32 +143,20 @@ internal class DoujinDesuParser(
     }
 
     private fun JSONObject.authorNames(): Set<String> {
-        val authors = namesOf("author")
-        if (authors.isNotEmpty()) return authors
-        val groups = namesOf("group", "groups", "circle")
-        if (groups.isNotEmpty()) return groups
+        val author = splitNames(opt("author"))
+        if (author.isNotEmpty()) return author
+        val artist = splitNames(opt("artist"))
+        if (artist.isNotEmpty()) return artist
         return setOf(UNKNOWN_NAME)
     }
 
-    private fun JSONObject.namesOf(vararg keys: String): Set<String> =
-        keys
-            .flatMap { key ->
-                when (val value = opt(key)) {
-                    is JSONArray -> {
-                        (0 until value.length()).mapNotNull { index ->
-                            value.opt(index).metadataName().nullIfEmpty()
-                        }
-                    }
-
-                    else -> listOf(value.metadataName())
-                }
-            }.mapNotNullToSet { it.trim().nullIfEmpty() }
-
-    private fun Any?.metadataName(): String =
-        when (this) {
-            is JSONObject -> optString("name").ifEmpty { optString("title") }
-            null -> ""
-            else -> toString()
+    private fun splitNames(value: Any?): Set<String> =
+        when (value) {
+            null, JSONObject.NULL -> emptyList()
+            is JSONArray -> (0 until value.length()).map { value.opt(it)?.toString().orEmpty() }
+            else -> value.toString().split(',')
+        }.mapNotNullTo(mutableSetOf()) { name ->
+            name.trim().takeIf { it.isNotEmpty() && !it.equals("null", ignoreCase = true) }
         }
 
     private companion object {

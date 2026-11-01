@@ -74,7 +74,7 @@ internal class DoujinDesuParser(
             id = manga.id,
             url = manga.url,
             publicUrl = manga.publicUrl,
-            chapters = json.optJSONArray("chapters")?.mapChapters()?.reversed() ?: emptyList(),
+            chapters = json.optJSONArray("chapters")?.mapChapters() ?: emptyList(),
         )
     }
 

@@ -80,7 +80,7 @@ class ParserProcessor(
                     MangaParserSource.valueOf(sourceName).newParser(context)
             }
 
-            internal fun MangaParserSource.newParser(context: MangaLoaderContext): MangaParser = when (this) {
+            internal fun MangaParserSource.newParser(context: MangaLoaderContext): MangaParser = when (name) {
 
             """.trimIndent(),
         )
@@ -107,6 +107,7 @@ class ParserProcessor(
 
         factoryWriter?.write(
             """
+            	else -> error("Unknown manga source: ${'$'}name")
             }.let {
             	require(it.source == this) {
             		"Cannot instantiate manga parser: ${'$'}name mapped to ${'$'}{it.source}"
@@ -174,7 +175,7 @@ class ParserProcessor(
                 logger.warn("Source title duplication: \"$title\" is assigned to both $prevTitleClass and $className")
             }
 
-            factoryWriter?.write("\tMangaParserSource.$name -> $className(context)\n")
+            factoryWriter?.write("\t\"$name\" -> $className(context)\n")
             val deprecationString =
                 if (deprecation != null) {
                     val reason =

@@ -104,7 +104,7 @@ internal class DoujinDesuParser(
         Manga(
             id = generateUid(json.getString("id")),
             title = json.optString("title"),
-            altTitles = json.optString("alt_titles").split('|').mapNotNullToSet { it.trim().nullIfEmpty() },
+            altTitles = parseAltTitles(json.optString("alt_titles")),
             url = json.getString("slug"),
             publicUrl = "/manga/${json.getString("slug")}".toAbsoluteUrl(domain),
             rating = (json.optDouble("rating", RATING_UNKNOWN.toDouble()) / 10.0).toFloat(),
@@ -140,6 +140,12 @@ internal class DoujinDesuParser(
             .replace(WHITESPACE, " ")
             .trim()
             .nullIfEmpty()
+    }
+
+    private fun parseAltTitles(value: String): Set<String> {
+        if (value.isBlank()) return emptySet()
+        val separator = if (value.contains('|')) "|" else ", "
+        return value.split(separator).mapNotNullToSet { it.trim().nullIfEmpty() }
     }
 
     private fun JSONObject.authorNames(): Set<String> {

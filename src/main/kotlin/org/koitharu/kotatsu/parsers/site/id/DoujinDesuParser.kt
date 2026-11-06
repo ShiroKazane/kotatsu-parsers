@@ -149,12 +149,28 @@ internal class DoujinDesuParser(
     }
 
     private fun JSONObject.authorNames(): Set<String> {
+        val fromTerms = termNames("author")
+        if (fromTerms.isNotEmpty()) return fromTerms
         val author = splitNames(opt("author"))
         if (author.isNotEmpty()) return author
         val artist = splitNames(opt("artist"))
         if (artist.isNotEmpty()) return artist
         return setOf(UNKNOWN_NAME)
     }
+
+    private fun JSONObject.termNames(kind: String): Set<String> =
+        optString("term_list")
+            .split('|')
+            .mapNotNullTo(mutableSetOf()) { entry ->
+                val slugIndex = entry.lastIndexOf(':')
+                val kindIndex = if (slugIndex > 0) entry.lastIndexOf(':', slugIndex - 1) else -1
+                if (kindIndex <= 0) return@mapNotNullTo null
+                if (entry.substring(kindIndex + 1, slugIndex) != kind) return@mapNotNullTo null
+                entry
+                    .substring(0, kindIndex)
+                    .trim()
+                    .takeIf { it.isNotEmpty() && !it.equals("N/A", ignoreCase = true) }
+            }
 
     private fun splitNames(value: Any?): Set<String> =
         when (value) {

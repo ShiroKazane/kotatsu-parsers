@@ -178,11 +178,20 @@ internal class DoujinDesuParser(
     private fun parseAltTitles(value: String): Set<String> {
         if (value.isBlank()) return emptySet()
         val separator = if (value.contains('|')) "|" else ", "
-        return value.split(separator).mapNotNullToSet { it.trim().nullIfEmpty() }
+        return value.split(separator).mapNotNullToSet {
+            it.trim().nullIfEmpty()?.takeUnless(::isPlaceholder)
+        }
     }
 
+    private fun isPlaceholder(value: String): Boolean =
+        value.equals("null", ignoreCase = true) ||
+            value.equals("n/a", ignoreCase = true) ||
+            value == UNKNOWN_NAME
+
     private fun JSONObject.authorNames(): Set<String> {
-        val fromTerms = termNames("author")
+        val fromTerms = LinkedHashSet<String>()
+        fromTerms += termNames("author")
+        fromTerms += termNames("group")
         if (fromTerms.isNotEmpty()) return fromTerms
         val author = splitNames(opt("author"))
         if (author.isNotEmpty()) return author
@@ -202,7 +211,7 @@ internal class DoujinDesuParser(
                 entry
                     .substring(0, kindIndex)
                     .trim()
-                    .takeIf { it.isNotEmpty() && !it.equals("N/A", ignoreCase = true) }
+                    .takeIf { it.isNotEmpty() && !isPlaceholder(it) }
             }
 
     private fun splitNames(value: Any?): Set<String> =
@@ -211,7 +220,7 @@ internal class DoujinDesuParser(
             is JSONArray -> (0 until value.length()).map { value.opt(it)?.toString().orEmpty() }
             else -> value.toString().split(',')
         }.mapNotNullTo(mutableSetOf()) { name ->
-            name.trim().takeIf { it.isNotEmpty() && !it.equals("null", ignoreCase = true) }
+            name.trim().takeIf { it.isNotEmpty() && !isPlaceholder(it) }
         }
 
     private companion object {

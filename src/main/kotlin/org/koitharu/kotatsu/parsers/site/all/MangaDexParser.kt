@@ -4,6 +4,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import okhttp3.Headers
 import okhttp3.HttpUrl
 import org.json.JSONArray
 import org.json.JSONObject
@@ -32,11 +33,23 @@ private const val CHAPTERS_MAX_COUNT = 10_000 // strange api behavior, looks lik
 private const val LOCALE_FALLBACK = "en"
 private const val SERVER_DATA = "data"
 private const val SERVER_DATA_SAVER = "data-saver"
+private const val DEFAULT_USER_AGENT = "Kotatsu"
 
 @MangaSourceParser("MANGADEX", "MangaDex")
 internal class MangaDexParser(context: MangaLoaderContext) : FlexibleMangaParser(context, MangaParserSource.MANGADEX) {
 
 	override val configKeyDomain = ConfigKey.Domain("mangadex.org")
+
+	override val userAgentKey = ConfigKey.UserAgent(DEFAULT_USER_AGENT)
+
+	override fun getRequestHeaders(): Headers {
+		// The API redirects browser-like user agents to a bot challenge page
+		val configured = config[userAgentKey]
+		val userAgent = configured.takeUnless { it.contains("Mozilla", ignoreCase = true) } ?: DEFAULT_USER_AGENT
+		return Headers.Builder()
+			.add("User-Agent", userAgent)
+			.build()
+	}
 
 	private val preferredServerKey = ConfigKey.PreferredImageServer(
 		presetValues = mapOf(
@@ -87,11 +100,6 @@ internal class MangaDexParser(context: MangaLoaderContext) : FlexibleMangaParser
 			),
 			SearchCapability(
 				field = AUTHOR,
-				criteriaTypes = setOf(Include::class),
-				isMultiple = true,
-			),
-			SearchCapability(
-				field = CONTENT_TYPE,
 				criteriaTypes = setOf(Include::class),
 				isMultiple = true,
 			),
@@ -222,6 +230,9 @@ internal class MangaDexParser(context: MangaLoaderContext) : FlexibleMangaParser
 			var hasContentRating = false
 
 			query.criteria.forEach { criterion ->
+				if (criterion.field == CONTENT_TYPE) {
+					return@forEach // not supported by the API anymore
+				}
 				when (criterion) {
 					is Include<*> -> {
 						if (criterion.field == CONTENT_RATING) {

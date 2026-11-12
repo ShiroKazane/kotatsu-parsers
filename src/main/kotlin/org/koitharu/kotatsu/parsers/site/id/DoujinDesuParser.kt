@@ -9,6 +9,7 @@ import org.koitharu.kotatsu.parsers.MangaLoaderContext
 import org.koitharu.kotatsu.parsers.MangaSourceParser
 import org.koitharu.kotatsu.parsers.config.ConfigKey
 import org.koitharu.kotatsu.parsers.core.PagedMangaParser
+import org.koitharu.kotatsu.parsers.exception.NotFoundException
 import org.koitharu.kotatsu.parsers.model.*
 import org.koitharu.kotatsu.parsers.util.*
 import org.koitharu.kotatsu.parsers.util.json.*
@@ -51,6 +52,12 @@ internal class DoujinDesuParser(
         order: SortOrder,
         filter: MangaListFilter,
     ): List<Manga> {
+        val author = filter.author?.trim().orEmpty()
+        if (author.isNotEmpty() && filter.query.isNullOrEmpty() && filter.tags.isEmpty() &&
+            filter.types.isEmpty() && filter.states.isEmpty()
+        ) {
+            getListPageByAuthor(page, order, author)?.let { return it }
+        }
         val url =
             urlBuilder()
                 .addPathSegments("api/manga")
@@ -66,6 +73,32 @@ internal class DoujinDesuParser(
         return (decode(webClient.httpGet(url, headers())) as JSONArray)
             .asTypedList<JSONObject>()
             .map(::toManga)
+    }
+
+    private suspend fun getListPageByAuthor(
+        page: Int,
+        order: SortOrder,
+        author: String,
+    ): List<Manga>? {
+        val url =
+            urlBuilder()
+                .addPathSegments("api/taxonomy/authors")
+                .addPathSegment(author)
+                .addQueryParameter("page", page.toString())
+                .addQueryParameter("sort", if (order == SortOrder.POPULARITY) "popular" else "latest")
+                .addQueryParameter("limit", pageSize.toString())
+                .build()
+        val json =
+            try {
+                decode(webClient.httpGet(url, headers())) as? JSONObject ?: return null
+            } catch (_: NotFoundException) {
+                return null
+            }
+        return json
+            .optJSONArray("mangaList")
+            ?.asTypedList<JSONObject>()
+            ?.map { toManga(it).copy(authors = setOf(author)) }
+            .orEmpty()
     }
 
     override suspend fun getDetails(manga: Manga): Manga {

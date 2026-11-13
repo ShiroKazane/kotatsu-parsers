@@ -1,6 +1,7 @@
 package org.koitharu.kotatsu.parsers.site.id
 
 import okhttp3.Headers
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import org.json.JSONArray
 import org.json.JSONObject
 import org.jsoup.HttpStatusException
@@ -86,7 +87,7 @@ internal class DoujinDesuParser(
         // The endpoint toggles the state and returns the resulting value
         val payload = JSONObject().put("manga_id", json.get("id"))
         try {
-            webClient.httpPost("api/user/bookmarks".toAbsoluteUrl(domain), payload, headers())
+            webClient.httpPost("api/user/bookmarks".toAbsoluteUrl(domain).toHttpUrl(), payload, headers())
         } catch (e: HttpStatusException) {
             throw ParseException(BOOKMARK_FAILURE.format(e.statusCode), domain, e)
         }
@@ -104,7 +105,7 @@ internal class DoujinDesuParser(
                 JSONObject()
                     .put("manga_id", json.get("id"))
                     .put("chapter_id", chapter.url.toIdValue())
-            webClient.httpPost("api/user/history".toAbsoluteUrl(domain), payload, headers())
+            webClient.httpPost("api/user/history".toAbsoluteUrl(domain).toHttpUrl(), payload, headers())
             lastReportedChapter = key
         }
     }

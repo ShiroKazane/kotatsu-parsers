@@ -35,6 +35,12 @@ public interface MangaParser : Interceptor {
 		get() = this as? MangaParserAuthProvider
 
 	/**
+	 * User-specific actions, if the source supports them
+	 */
+	public val userActions: MangaParserUserActions?
+		get() = this as? MangaParserUserActions
+
+	/**
 	 * Provide default domain and available alternatives, if any.
 	 *
 	 * Never hardcode domain in requests, use [domain] instead.

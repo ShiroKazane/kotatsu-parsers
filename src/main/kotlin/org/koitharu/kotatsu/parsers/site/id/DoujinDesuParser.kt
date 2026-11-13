@@ -3,13 +3,18 @@ package org.koitharu.kotatsu.parsers.site.id
 import okhttp3.Headers
 import org.json.JSONArray
 import org.json.JSONObject
+import org.jsoup.HttpStatusException
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Entities
 import org.koitharu.kotatsu.parsers.MangaLoaderContext
+import org.koitharu.kotatsu.parsers.MangaParserAuthProvider
+import org.koitharu.kotatsu.parsers.MangaParserUserActions
 import org.koitharu.kotatsu.parsers.MangaSourceParser
 import org.koitharu.kotatsu.parsers.config.ConfigKey
 import org.koitharu.kotatsu.parsers.core.PagedMangaParser
+import org.koitharu.kotatsu.parsers.exception.AuthRequiredException
 import org.koitharu.kotatsu.parsers.exception.NotFoundException
+import org.koitharu.kotatsu.parsers.exception.ParseException
 import org.koitharu.kotatsu.parsers.model.*
 import org.koitharu.kotatsu.parsers.util.*
 import org.koitharu.kotatsu.parsers.util.json.*
@@ -20,8 +25,11 @@ import java.util.UUID
 @MangaSourceParser("DOUJINDESU", "DoujinDesu", "id")
 internal class DoujinDesuParser(
     context: MangaLoaderContext,
-) : PagedMangaParser(context, MangaParserSource.DOUJINDESU, pageSize = 24) {
+) : PagedMangaParser(context, MangaParserSource.DOUJINDESU, pageSize = 24),
+    MangaParserAuthProvider,
+    MangaParserUserActions {
     private val deviceId = "kotatsu-${UUID.randomUUID()}"
+    private var lastReportedChapter: String? = null
 
     override val configKeyDomain: ConfigKey.Domain
         get() = ConfigKey.Domain("doujin.desu.xxx")
@@ -46,6 +54,69 @@ internal class DoujinDesuParser(
         )
 
     override fun getRequestHeaders(): Headers = headers()
+
+    override val authUrl: String
+        get() = "https://$domain/"
+
+    override suspend fun isAuthorized(): Boolean = token() != null
+
+    override suspend fun getUsername(): String {
+        val user = rawJson("api/auth/me") as? JSONObject ?: throw AuthRequiredException(source)
+        return user.optString("full_name").nullIfEmpty()
+            ?: user.optString("username").nullIfEmpty()
+            ?: throw AuthRequiredException(source)
+    }
+
+    override suspend fun isBookmarked(manga: Manga): Boolean? {
+        if (!isAuthorized()) return null
+        return runCatching {
+            (rawJson("api/manga/${manga.url}") as? JSONObject)?.optBoolean("is_bookmarked", false)
+        }.getOrNull()
+    }
+
+    override suspend fun setBookmarked(
+        manga: Manga,
+        bookmarked: Boolean,
+    ) {
+        if (!isAuthorized()) throw AuthRequiredException(source)
+        val json =
+            rawJson("api/manga/${manga.url}") as? JSONObject
+                ?: throw NotFoundException("Manga not found", manga.url)
+        if (json.optBoolean("is_bookmarked", false) == bookmarked) return
+        // The endpoint toggles the state and returns the resulting value
+        val payload = JSONObject().put("manga_id", json.get("id"))
+        try {
+            webClient.httpPost("api/user/bookmarks".toAbsoluteUrl(domain), payload, headers())
+        } catch (e: HttpStatusException) {
+            throw ParseException(BOOKMARK_FAILURE.format(e.statusCode), domain, e)
+        }
+    }
+
+    override suspend fun onChapterRead(
+        manga: Manga,
+        chapter: MangaChapter,
+    ) {
+        val key = "${manga.url}/${chapter.url}"
+        if (key == lastReportedChapter || !isAuthorized()) return
+        runCatching {
+            val json = rawJson("api/manga/${manga.url}") as? JSONObject ?: return@runCatching
+            val payload =
+                JSONObject()
+                    .put("manga_id", json.get("id"))
+                    .put("chapter_id", chapter.url.toIdValue())
+            webClient.httpPost("api/user/history".toAbsoluteUrl(domain), payload, headers())
+            lastReportedChapter = key
+        }
+    }
+
+    private fun token(): String? =
+        context.cookieJar
+            .getCookies(domain)
+            .firstOrNull { it.name == TOKEN_COOKIE }
+            ?.value
+            ?.takeIf(String::isNotBlank)
+
+    private suspend fun rawJson(path: String): Any = decode(webClient.httpGet(path.toAbsoluteUrl(domain), headers()))
 
     override suspend fun getListPage(
         page: Int,
@@ -227,6 +298,13 @@ internal class DoujinDesuParser(
         val AD_URL = Regex("(?i)\\b(?:https?://|www\\.)\\S+")
         val WHITESPACE = Regex("\\s+")
         const val UNKNOWN_NAME = "-"
+        const val APP_SECRET = "dfdf72051dbfdc7d76889ebd31324e74"
+        const val TOKEN_COOKIE = "doujindesu_token"
+
+        // Free accounts have a bookmark quota, VIP is unlimited
+        const val BOOKMARK_FAILURE =
+            "Doujindesu library update failed (HTTP %d). " +
+                "Free accounts have a bookmark quota; remove some bookmarks or upgrade to VIP."
     }
 
     private fun JSONArray.mapChapters(): List<MangaChapter> =
@@ -297,13 +375,17 @@ internal class DoujinDesuParser(
     private fun headers() =
         Headers
             .Builder()
-            .add("X-App-Secret", "dfdf72051dbfdc7d76889ebd31324e74")
-            .add("x-app-secret", "dfdf72051dbfdc7d76889ebd31324e74")
+            .add("X-App-Secret", APP_SECRET)
+            .add("x-app-secret", APP_SECRET)
             .add("X-Device-ID", deviceId)
             .add("x-device-id", deviceId)
             .add("X-Device-Name", "Kotatsu")
             .add("Referer", "https://$domain/")
-            .build()
+            .apply {
+                token()?.let { add("Authorization", "Bearer $it") }
+            }.build()
+
+    private fun String.toIdValue(): Any = toLongOrNull() ?: this
 
     private fun String?.toDateMillis(): Long =
         runCatching {

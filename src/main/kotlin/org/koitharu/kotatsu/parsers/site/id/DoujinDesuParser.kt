@@ -63,8 +63,8 @@ internal class DoujinDesuParser(
 
     override suspend fun getUsername(): String {
         val user = rawJson("api/auth/me") as? JSONObject ?: throw AuthRequiredException(source)
-        return user.optString("full_name").nullIfEmpty()
-            ?: user.optString("username").nullIfEmpty()
+        return user.getStringOrNull("full_name")
+            ?: user.getStringOrNull("username")
             ?: throw AuthRequiredException(source)
     }
 
@@ -208,13 +208,13 @@ internal class DoujinDesuParser(
     private fun toManga(json: JSONObject) =
         Manga(
             id = generateUid(json.getString("id")),
-            title = json.optString("title"),
-            altTitles = parseAltTitles(json.optString("alt_titles")),
+            title = json.getStringOrNull("title").orEmpty(),
+            altTitles = parseAltTitles(json.getStringOrNull("alt_titles").orEmpty()),
             url = json.getString("slug"),
             publicUrl = "/manga/${json.getString("slug")}".toAbsoluteUrl(domain),
             rating = (json.optDouble("rating", RATING_UNKNOWN.toDouble()) / 10.0).toFloat(),
             contentRating = ContentRating.ADULT,
-            coverUrl = json.optString("cover_url").nullIfEmpty(),
+            coverUrl = json.getStringOrNull("cover_url"),
             tags =
                 json
                     .optJSONArray("manga_genres")
@@ -224,14 +224,14 @@ internal class DoujinDesuParser(
                         MangaTag(genre.optString("name"), genre.optString("slug"), source)
                     }.orEmpty(),
             state =
-                when (json.optString("status")) {
+                when (json.getStringOrNull("status")) {
                     "ongoing", "publishing" -> MangaState.ONGOING
                     "completed", "finished" -> MangaState.FINISHED
                     else -> null
                 },
             authors = json.authorNames(),
-            largeCoverUrl = json.optString("banner_url").nullIfEmpty(),
-            description = cleanDescription(json.optString("description")),
+            largeCoverUrl = json.getStringOrNull("banner_url"),
+            description = cleanDescription(json.getStringOrNull("description").orEmpty()),
             chapters = null,
             source = source,
         )
@@ -313,12 +313,12 @@ internal class DoujinDesuParser(
             val json = optJSONObject(index) ?: return@mapNotNull null
             MangaChapter(
                 id = generateUid(json.getString("id")),
-                title = json.optString("title").nullIfEmpty(),
+                title = json.getStringOrNull("title"),
                 number = json.optDouble("chapter_number", 0.0).toFloat(),
                 volume = 0,
                 url = json.getString("id"),
                 scanlator = null,
-                uploadDate = json.optString("created_at").toDateMillis(),
+                uploadDate = json.getStringOrNull("created_at").toDateMillis(),
                 branch = null,
                 source = source,
             )

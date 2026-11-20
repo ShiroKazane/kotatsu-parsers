@@ -169,7 +169,7 @@ internal class DoujinDesuParser(
         return json
             .optJSONArray("mangaList")
             ?.asTypedList<JSONObject>()
-            ?.map { toManga(it).copy(authors = setOf(author)) }
+            ?.map { toManga(it).copy(authors = setOf(author.normalizeName())) }
             .orEmpty()
     }
 
@@ -251,7 +251,7 @@ internal class DoujinDesuParser(
         if (value.isBlank()) return emptySet()
         val separator = if (value.contains('|')) "|" else ", "
         return value.split(separator).mapNotNullToSet {
-            it.trim().nullIfEmpty()?.takeUnless(::isPlaceholder)
+            it.normalizeName().takeUnless(::isPlaceholder)
         }
     }
 
@@ -282,7 +282,7 @@ internal class DoujinDesuParser(
                 if (entry.substring(kindIndex + 1, slugIndex) != kind) return@mapNotNullTo null
                 entry
                     .substring(0, kindIndex)
-                    .trim()
+                    .normalizeName()
                     .takeIf { it.isNotEmpty() && !isPlaceholder(it) }
             }
 
@@ -292,12 +292,17 @@ internal class DoujinDesuParser(
             is JSONArray -> (0 until value.length()).map { value.opt(it)?.toString().orEmpty() }
             else -> value.toString().split(',')
         }.mapNotNullTo(mutableSetOf()) { name ->
-            name.trim().takeIf { it.isNotEmpty() && !isPlaceholder(it) }
+            name.normalizeName().takeIf { it.isNotEmpty() && !isPlaceholder(it) }
         }
+
+    private fun String.normalizeName(): String = replace(SPECIAL_SPACES, " ")
+        .replace(WHITESPACE, " ")
+        .trim()
 
     private companion object {
         val AD_URL = Regex("(?i)\\b(?:https?://|www\\.)\\S+")
         val WHITESPACE = Regex("\\s+")
+        val SPECIAL_SPACES = Regex("[\\u00A0\\u1680\\u2000-\\u200B\\u202F\\u205F\\u3000\\uFEFF]")
         const val UNKNOWN_NAME = "-"
         const val APP_SECRET = "dfdf72051dbfdc7d76889ebd31324e74"
         const val TOKEN_COOKIE = "doujindesu_token"

@@ -1,5 +1,6 @@
 package org.koitharu.kotatsu.parsers.site.mangareader.id
 
+import okhttp3.HttpUrl
 import org.json.JSONObject
 import org.jsoup.Jsoup
 import org.koitharu.kotatsu.parsers.MangaLoaderContext
@@ -19,6 +20,7 @@ import org.koitharu.kotatsu.parsers.model.MangaState
 import org.koitharu.kotatsu.parsers.model.MangaTag
 import org.koitharu.kotatsu.parsers.model.RATING_UNKNOWN
 import org.koitharu.kotatsu.parsers.model.SortOrder
+import org.koitharu.kotatsu.parsers.util.LinkResolver
 import org.koitharu.kotatsu.parsers.util.generateUid
 import org.koitharu.kotatsu.parsers.util.json.asTypedList
 import org.koitharu.kotatsu.parsers.util.json.mapJSON
@@ -121,6 +123,22 @@ internal class KiryuuParser(
         return json.mapJSON { it.toManga(genres) }
     }
 
+    override suspend fun resolveLink(resolver: LinkResolver, link: HttpUrl): Manga? {
+        val segments = link.pathSegments
+        val index = segments.indexOf("manga")
+        if (index < 0) return null
+        val slug = segments.getOrNull(index + 1)?.nullIfEmpty() ?: return null
+        return getDetails(
+            Manga(
+                id = generateUid(slug),
+                title = slug,
+                url = slug,
+                publicUrl = link.toString(),
+                source = source,
+            ),
+        )
+    }
+
     override suspend fun getDetails(manga: Manga): Manga {
         val genres = genresLazy.get()
         val url =
@@ -187,11 +205,12 @@ internal class KiryuuParser(
     private fun JSONObject.toManga(genreNames: Map<String, Term>): Manga {
         val slug = getString("slug")
         val meta = optJSONObject("metadata")?.optJSONObject("meta")
-        val cover = meta?.optString("thumbnail")?.nullIfEmpty()
+        val cover = meta?.optString("thumbnail")?.nullIfEmpty()?.toAbsoluteUrl(domain)
+        val titleText = getJSONObject("title").optString("rendered").let { Jsoup.parse(it).text() }
         val classList = optJSONArray("class_list")?.asTypedList<String>().orEmpty()
         return Manga(
             id = generateUid(slug),
-            title = getJSONObject("title").optString("rendered").let { Jsoup.parse(it).text() },
+            title = titleText,
             altTitles = parseAltTitles(meta?.optString("alternative_title")),
             url = slug,
             publicUrl = "https://$domain/manga/$slug/",
@@ -203,7 +222,12 @@ internal class KiryuuParser(
                 optJSONObject("content")
                     ?.optString("rendered")
                     ?.let { Jsoup.parse(it).text() }
-                    ?.nullIfEmpty(),
+                    ?.nullIfEmpty()
+                    ?: optJSONObject("excerpt")
+                        ?.optString("rendered")
+                        ?.let { Jsoup.parse(it).text() }
+                        ?.nullIfEmpty()
+                    ?: titleText,
             tags =
                 optJSONArray("genre")
                     ?.asTypedList<Int>()
@@ -234,6 +258,9 @@ internal class KiryuuParser(
         }
         return names
     }
+
+    private fun String.capitalizeName(): String =
+        replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
 
     private fun parseAltTitles(value: String?): Set<String> =
         value
@@ -292,7 +319,7 @@ internal class KiryuuParser(
             json
                 .mapJSON {
                     val id = it.optString("id")
-                    id to Term(id, it.optString("name"), it.optString("slug"))
+                    id to Term(id, it.optString("name").capitalizeName(), it.optString("slug"))
                 }.forEach { (id, term) -> result[id] = term }
             if (json.length() < TERMS_PAGE_SIZE) break
             page++

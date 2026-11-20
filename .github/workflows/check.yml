@@ -60,3 +60,8 @@ jobs:
 
       - name: Test parsers
         run: ./gradlew test --stacktrace
+
+      - name: Dump test failures
+        if: failure()
+        run: |
+          grep -ho 'message="[^"]*"' build/test-results/test/*.xml | head -80

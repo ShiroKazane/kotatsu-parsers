@@ -1,6 +1,7 @@
 package org.koitharu.kotatsu.parsers.site.id
 
 import okhttp3.Headers
+import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import org.json.JSONArray
 import org.json.JSONObject
@@ -171,6 +172,15 @@ internal class DoujinDesuParser(
             ?.asTypedList<JSONObject>()
             ?.map { toManga(it).copy(authors = setOf(author.normalizeName())) }
             .orEmpty()
+    }
+
+    override suspend fun resolveLink(resolver: LinkResolver, link: HttpUrl): Manga? {
+        val segments = link.pathSegments
+        val index = segments.indexOf("manga")
+        if (index < 0) return null
+        val slug = segments.getOrNull(index + 1)?.takeIf { it.isNotEmpty() } ?: return null
+        val json = decode(webClient.httpGet("/api/manga/$slug".toAbsoluteUrl(domain), headers())) as? JSONObject ?: return null
+        return toManga(json)
     }
 
     override suspend fun getDetails(manga: Manga): Manga {

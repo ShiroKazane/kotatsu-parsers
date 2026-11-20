@@ -157,8 +157,21 @@ internal class YurivanParser(
                 addQueryParameter("story_id", "eq.$storyId")
                 addQueryParameter("order", "chapter_index.asc")
             }
-        val chapters = webClient.httpGet(chaptersUrl, headers()).parseJsonArray().mapJSON { it.toChapter(storyId) }
-        return story.toManga().copy(chapters = chapters)
+        val chaptersJson = webClient.httpGet(chaptersUrl, headers()).parseJsonArray()
+        val chapters = chaptersJson.mapJSON { it.toChapter(storyId) }
+        // keep every chapter in the default branch, and additionally expose the explicit
+        // ones as their own branch so the details screen can filter like the website does
+        val explicitChapters = ArrayList<MangaChapter>()
+        for (i in 0 until chaptersJson.length()) {
+            val row = chaptersJson.getJSONObject(i)
+            if (row.optBoolean("has_explicit_scene", false)) {
+                explicitChapters += row.toChapter(storyId).copy(
+                    id = generateUid("${row.getString("id")}#explicit"),
+                    branch = BRANCH_EXPLICIT,
+                )
+            }
+        }
+        return story.toManga().copy(chapters = chapters + explicitChapters)
     }
 
     private suspend fun fetchTags(): Set<MangaTag> {
@@ -275,9 +288,8 @@ internal class YurivanParser(
             url = "$storyId/$index",
             scanlator = null,
             uploadDate = parseDate(getStringOrNull("created_at")),
-            // explicit chapters form their own branch, so the details screen can filter
-            // between them and the rest (like the "Explicit only" switch on the website)
-            branch = if (optBoolean("has_explicit_scene", false)) BRANCH_EXPLICIT else null,
+            // explicit chapters are additionally exposed as their own branch (see loadDetails)
+            branch = null,
             source = source,
         )
     }

@@ -201,8 +201,11 @@ internal class DoujinDesuParser(
     private suspend fun fetchAvailableTags(): Set<MangaTag> =
         (decode(webClient.httpGet("/api/genres".toAbsoluteUrl(domain), headers())) as JSONArray)
             .asTypedList<JSONObject>()
-            .mapToSet { tag ->
-                MangaTag(tag.optString("name"), tag.optString("slug"), source)
+            .mapNotNullToSet { tag ->
+                val name = tag.optString("name").sanitizeTagName()
+                val slug = tag.optString("slug").trim()
+                // the site has junk entries like `"Humilation"` or empty `[]` buckets
+                if (name.isEmpty() || slug.isEmpty() || name == "[]") null else MangaTag(name, slug, source)
             }
 
     private fun toManga(json: JSONObject) =
@@ -221,7 +224,13 @@ internal class DoujinDesuParser(
                     ?.asTypedList<JSONObject>()
                     ?.mapNotNullToSet { item ->
                         val genre = item.optJSONObject("genres") ?: return@mapNotNullToSet null
-                        MangaTag(genre.optString("name"), genre.optString("slug"), source)
+                        val name = genre.optString("name").sanitizeTagName()
+                        val slug = genre.optString("slug").trim()
+                        if (name.isEmpty() || slug.isEmpty() || name == "[]") {
+                            null
+                        } else {
+                            MangaTag(name, slug, source)
+                        }
                     }.orEmpty(),
             state =
                 when (json.getStringOrNull("status")) {
@@ -298,6 +307,8 @@ internal class DoujinDesuParser(
     private fun String.normalizeName(): String = replace(SPECIAL_SPACES, " ")
         .replace(WHITESPACE, " ")
         .trim()
+
+    private fun String.sanitizeTagName(): String = normalizeName().trim('"').trim()
 
     private companion object {
         val AD_URL = Regex("(?i)\\b(?:https?://|www\\.)\\S+")

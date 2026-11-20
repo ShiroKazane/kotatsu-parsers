@@ -158,7 +158,7 @@ internal class YurivanParser(
                 addQueryParameter("order", "chapter_index.asc")
             }
         val chapters = webClient.httpGet(chaptersUrl, headers()).parseJsonArray().mapJSON { it.toChapter(storyId) }
-        return story.toManga().copy(chapters = chapters.reversed())
+        return story.toManga().copy(chapters = chapters)
     }
 
     private suspend fun fetchTags(): Set<MangaTag> {

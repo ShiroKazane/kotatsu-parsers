@@ -253,14 +253,13 @@ internal class DoujinDesuParser(
         val source = if (cutoff >= 0) unescaped.substring(0, cutoff) else unescaped
         val document = Jsoup.parseBodyFragment(source)
         document.select("a, script, style, img, iframe, video, source").remove()
-        return AD_URL
+        val text = AD_URL
             .replace(document.text(), " ")
             .replace(SPECIAL_SPACES, " ")
             .replace(PIPES, " ")
             .replace(WHITESPACE, " ")
             .trim()
-            .takeUnless(::isPlaceholder)
-            .nullIfEmpty()
+        return text.takeUnless { it.isEmpty() || isPlaceholder(it) }
     }
 
     private fun parseAltTitles(value: String): Set<String> {

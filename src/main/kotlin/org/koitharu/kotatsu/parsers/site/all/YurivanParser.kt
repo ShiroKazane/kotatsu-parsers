@@ -199,6 +199,7 @@ internal class YurivanParser(
     private fun JSONObject.toManga(): Manga {
         val storyId = getString("id")
         val title = getString("title")
+        val cover = getStringOrNull("cover_url")
         return Manga(
             id = generateUid(storyId),
             title = title,
@@ -207,8 +208,8 @@ internal class YurivanParser(
             publicUrl = "https://$DOMAIN/en/story/$storyId",
             rating = optDouble("rating_avg", 0.0).toFloat().div(5f).takeIf { it > 0f } ?: RATING_UNKNOWN,
             contentRating = ContentRating.ADULT,
-            coverUrl = coverUrl(),
-            largeCoverUrl = coverUrl(),
+            coverUrl = cover,
+            largeCoverUrl = cover,
             description = description(),
             tags =
                 optJSONArray("tags")
@@ -224,12 +225,6 @@ internal class YurivanParser(
         )
     }
 
-    private fun JSONObject.coverUrl(): String? {
-        getStringOrNull("cover_url")?.let { return it }
-        val key = getStringOrNull("cover_object_key") ?: return null
-        return "$IMAGE_BASE/$key"
-    }
-
     private fun JSONObject.description(): String? {
         optJSONObject("descriptions")?.let { descriptions ->
             descriptions.getDescription("en")?.let { return it }
@@ -241,7 +236,8 @@ internal class YurivanParser(
     }
 
     private fun JSONObject.getDescription(locale: String): String? =
-        optJSONObject(locale)?.getStringOrNull("text")
+        optJSONObject(locale)
+            ?.getStringOrNull("text")
 
     private fun JSONObject.parseAltTitles(title: String): Set<String> {
         val alt = optJSONObject("alt_titles") ?: return emptySet()
@@ -346,7 +342,7 @@ internal class YurivanParser(
         private const val TAGS_LIMIT = 120
         private const val TAGS_PAGE_SIZE = 1000
         private const val LIST_FIELDS =
-            "id,title,cover_url,cover_object_key,tags,rating_avg,chapter_count,publication_status,original_creator"
+            "id,title,cover_url,tags,rating_avg,chapter_count,publication_status,original_creator"
         private const val DETAILS_FIELDS =
             "$LIST_FIELDS,alt_titles,descriptions,caption,updated_at,published_at,view_count"
         private val UUID_PATTERN = Regex("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")

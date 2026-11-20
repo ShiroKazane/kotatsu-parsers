@@ -174,12 +174,16 @@ internal class DoujinDesuParser(
             .orEmpty()
     }
 
-    override suspend fun resolveLink(resolver: LinkResolver, link: HttpUrl): Manga? {
+    override suspend fun resolveLink(
+        resolver: LinkResolver,
+        link: HttpUrl,
+    ): Manga? {
         val segments = link.pathSegments
         val index = segments.indexOf("manga")
         if (index < 0) return null
         val slug = segments.getOrNull(index + 1)?.takeIf { it.isNotEmpty() } ?: return null
-        val json = decode(webClient.httpGet("/api/manga/$slug".toAbsoluteUrl(domain), headers())) as? JSONObject ?: return null
+        val json =
+            decode(webClient.httpGet("/api/manga/$slug".toAbsoluteUrl(domain), headers())) as? JSONObject ?: return null
         return toManga(json)
     }
 
@@ -263,12 +267,13 @@ internal class DoujinDesuParser(
         val source = if (cutoff >= 0) unescaped.substring(0, cutoff) else unescaped
         val document = Jsoup.parseBodyFragment(source)
         document.select("a, script, style, img, iframe, video, source").remove()
-        val text = AD_URL
-            .replace(document.text(), " ")
-            .replace(SPECIAL_SPACES, " ")
-            .replace(PIPES, " ")
-            .replace(WHITESPACE, " ")
-            .trim()
+        val text =
+            AD_URL
+                .replace(document.text(), " ")
+                .replace(SPECIAL_SPACES, " ")
+                .replace(PIPES, " ")
+                .replace(WHITESPACE, " ")
+                .trim()
         return text.takeUnless { it.isEmpty() || isPlaceholder(it) }
     }
 
@@ -320,9 +325,10 @@ internal class DoujinDesuParser(
             name.normalizeName().takeIf { it.isNotEmpty() && !isPlaceholder(it) }
         }
 
-    private fun String.normalizeName(): String = replace(SPECIAL_SPACES, " ")
-        .replace(WHITESPACE, " ")
-        .trim()
+    private fun String.normalizeName(): String =
+        replace(SPECIAL_SPACES, " ")
+            .replace(WHITESPACE, " ")
+            .trim()
 
     private fun String.sanitizeTagName(): String = normalizeName().trim('"').trim()
 

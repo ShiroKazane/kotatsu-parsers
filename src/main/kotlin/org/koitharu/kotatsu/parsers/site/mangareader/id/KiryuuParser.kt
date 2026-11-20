@@ -123,7 +123,10 @@ internal class KiryuuParser(
         return json.mapJSON { it.toManga(genres) }
     }
 
-    override suspend fun resolveLink(resolver: LinkResolver, link: HttpUrl): Manga? {
+    override suspend fun resolveLink(
+        resolver: LinkResolver,
+        link: HttpUrl,
+    ): Manga? {
         val segments = link.pathSegments
         val index = segments.indexOf("manga")
         if (index < 0) return null

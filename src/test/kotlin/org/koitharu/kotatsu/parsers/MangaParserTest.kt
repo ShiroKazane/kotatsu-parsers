@@ -210,16 +210,20 @@ internal class MangaParserTest {
 		}
 
 		assert(pages.isNotEmpty()) { "Pages are empty for all chapters of ${manga.publicUrl}" }
-		assert(pages.isDistinctBy { it.id })
-		assert(pages.all { it.source == source })
+		assert(pages.isDistinctBy { it.id }) {
+			"Pages are not distinct by id: ${pages.maxDuplicates { it.id }} for ${manga.publicUrl}"
+		}
+		assert(pages.all { it.source == source }) {
+			"Page sources are mismatched for ${manga.publicUrl}"
+		}
 
 		arrayOf(
 			pages.first(),
 			pages.medianOrNull() ?: error("No page"),
 		).forEach { page ->
 			val pageUrl = parser.getPageUrl(page)
-			assert(pageUrl.isNotEmpty())
-			assert(pageUrl.isUrlAbsolute())
+			assert(pageUrl.isNotEmpty()) { "Page url is empty for $page" }
+			assert(pageUrl.isUrlAbsolute()) { "Page url is not absolute: $pageUrl" }
 			checkImageRequest(pageUrl, page.source)
 		}
 	}

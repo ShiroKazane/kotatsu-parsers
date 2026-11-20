@@ -153,7 +153,7 @@ internal class YurivanParser(
                 ?: throw NotFoundException(storyId, storyUrl.toString())
         val chaptersUrl =
             apiUrl("story_chapters") {
-                addQueryParameter("select", "id,chapter_index,title,created_at")
+                addQueryParameter("select", "id,chapter_index,title,created_at,has_explicit_scene")
                 addQueryParameter("story_id", "eq.$storyId")
                 addQueryParameter("order", "chapter_index.asc")
             }
@@ -275,7 +275,9 @@ internal class YurivanParser(
             url = "$storyId/$index",
             scanlator = null,
             uploadDate = parseDate(getStringOrNull("created_at")),
-            branch = null,
+            // explicit chapters form their own branch, so the details screen can filter
+            // between them and the rest (like the "Explicit only" switch on the website)
+            branch = if (optBoolean("has_explicit_scene", false)) BRANCH_EXPLICIT else null,
             source = source,
         )
     }
@@ -342,6 +344,7 @@ internal class YurivanParser(
         private const val API_KEY = "sb_publishable_4yI6VdjidXNGtE29hI5k3A_w4TxKHix"
         private const val SCHEMA = "yurivan"
         private const val PAGE_SIZE = 24
+        private const val BRANCH_EXPLICIT = "Explicit"
         private const val TAGS_LIMIT = 120
         private const val TAGS_PAGE_SIZE = 1000
         private const val LIST_FIELDS =

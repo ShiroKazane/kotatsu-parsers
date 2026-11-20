@@ -293,7 +293,7 @@ internal class MangaParserTest {
 		context.doRequest(url, source).use {
 			assert(it.isSuccessful) { "Request failed: ${it.code}(${it.message}): $url" }
 			assert(it.mimeType?.startsWith("image/") == true) {
-				"Wrong response mime type: ${it.mimeType}"
+				"Wrong response mime type: ${it.mimeType} for $url"
 			}
 		}
 	}

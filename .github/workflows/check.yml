@@ -64,4 +64,4 @@ jobs:
       - name: Dump test failures
         if: failure()
         run: |
-          grep -ho 'message="[^"]*"' build/test-results/test/*.xml | head -80
+          perl -0777 -ne 'while(/<testcase name="([^"]*)" classname="([^"]*)"[^>]*>\s*<(?:failure|error)[^>]*message="([^"]*)"/g){print "$2 :: $1\n    $3\n"}' build/test-results/test/*.xml

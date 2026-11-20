@@ -24,7 +24,7 @@ import java.util.*
 
 internal abstract class LibSocialParser(
 	context: MangaLoaderContext,
-	source: MangaParserSource,
+	source: ParserSource,
 	protected val siteId: Int,
 	siteDomains: Array<String>,
 ) : PagedMangaParser(context, source, pageSize = 60), MangaParserAuthProvider {

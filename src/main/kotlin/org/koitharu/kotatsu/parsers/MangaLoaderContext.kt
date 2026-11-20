@@ -9,6 +9,7 @@ import org.koitharu.kotatsu.parsers.bitmap.Bitmap
 import org.koitharu.kotatsu.parsers.config.MangaSourceConfig
 import org.koitharu.kotatsu.parsers.model.MangaParserSource
 import org.koitharu.kotatsu.parsers.model.MangaSource
+import org.koitharu.kotatsu.parsers.model.ParserSource
 import org.koitharu.kotatsu.parsers.util.LinkResolver
 import java.util.*
 
@@ -18,7 +19,7 @@ public abstract class MangaLoaderContext {
 
 	public abstract val cookieJar: CookieJar
 
-	public fun newParserInstance(source: MangaParserSource): MangaParser = source.newParser(this)
+	public fun newParserInstance(source: ParserSource): MangaParser = source.newParser(this)
 
 	public fun newLinkResolver(link: HttpUrl): LinkResolver = LinkResolver(this, link)
 

@@ -4,6 +4,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.extension.BeforeAllCallback
 import org.junit.jupiter.api.extension.ExtensionContext
 import org.koitharu.kotatsu.parsers.model.MangaParserSource
+import org.koitharu.kotatsu.parsers.model.ParserSource
 import org.koitharu.kotatsu.parsers.util.runCatchingCancellable
 
 class AuthCheckExtension : BeforeAllCallback {
@@ -19,7 +20,7 @@ class AuthCheckExtension : BeforeAllCallback {
 		}
 	}
 
-	private fun checkAuthorization(source: MangaParserSource, parser: MangaParserAuthProvider) = runTest {
+	private fun checkAuthorization(source: ParserSource, parser: MangaParserAuthProvider) = runTest {
 		runCatchingCancellable {
 			parser.getUsername()
 		}.onSuccess { username ->

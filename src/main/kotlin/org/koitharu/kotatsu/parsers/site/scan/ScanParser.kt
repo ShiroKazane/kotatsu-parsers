@@ -15,7 +15,7 @@ import java.util.*
 
 internal abstract class ScanParser(
 	context: MangaLoaderContext,
-	source: MangaParserSource,
+	source: ParserSource,
 	domain: String,
 	pageSize: Int = 0,
 ) : PagedMangaParser(context, source, pageSize) {

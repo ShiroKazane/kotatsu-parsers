@@ -10,7 +10,7 @@ import java.util.*
 
 internal abstract class GalleryParser(
 	context: MangaLoaderContext,
-	source: MangaParserSource,
+	source: ParserSource,
 	domain: String,
 ) : AbstractMangaParser(context, source) {
 

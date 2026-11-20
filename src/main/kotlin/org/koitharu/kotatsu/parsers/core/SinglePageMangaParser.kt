@@ -6,11 +6,12 @@ import org.koitharu.kotatsu.parsers.model.Manga
 import org.koitharu.kotatsu.parsers.model.MangaListFilter
 import org.koitharu.kotatsu.parsers.model.MangaParserSource
 import org.koitharu.kotatsu.parsers.model.SortOrder
+import org.koitharu.kotatsu.parsers.model.ParserSource
 
 @InternalParsersApi
 public abstract class SinglePageMangaParser(
 	context: MangaLoaderContext,
-	source: MangaParserSource,
+	source: ParserSource,
 ) : AbstractMangaParser(context, source) {
 
 	final override suspend fun getList(offset: Int, order: SortOrder, filter: MangaListFilter): List<Manga> {

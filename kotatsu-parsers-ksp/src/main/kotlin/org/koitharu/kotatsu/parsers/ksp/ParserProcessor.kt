@@ -71,34 +71,24 @@ class ParserProcessor(
             package org.koitharu.kotatsu.parsers
 
             import org.koitharu.kotatsu.parsers.model.MangaParserSource
+            import org.koitharu.kotatsu.parsers.model.ParserSource
             import org.koitharu.kotatsu.parsers.core.MangaParserWrapper
 
             public object GeneratedParserBundleProvider : ParserBundleProvider {
-                override fun sources(): Array<MangaParserSource> = MangaParserSource.entries.toTypedArray()
+                override fun sources(): Array<ParserSource> = MangaParserSource.entries.toTypedArray()
 
                 override fun create(context: MangaLoaderContext, sourceName: String): MangaParser =
                     MangaParserSource.valueOf(sourceName).newParser(context)
             }
 
-            internal fun MangaParserSource.newParser(context: MangaLoaderContext): MangaParser = when (name) {
-
-            """.trimIndent(),
-        )
-        sourcesWriter?.write(
-            """
-            package org.koitharu.kotatsu.parsers.model
-
-            public enum class MangaParserSource(
-            	public val title: String,
-            	public val locale: String,
-            	public val contentType: ContentType,
-            	public val isBroken: Boolean,
-            ): MangaSource {
+            internal fun ParserSource.newParser(context: MangaLoaderContext): MangaParser = when (name) {
 
             """.trimIndent(),
         )
 
-        val visitor = ParserVisitor(sourcesWriter, factoryWriter)
+        val entries = StringBuilder()
+        val names = ArrayList<String>()
+        val visitor = ParserVisitor(entries, factoryWriter, names)
         val totalCount =
             symbols
                 .filter { it is KSClassDeclaration && it.validate() }
@@ -116,11 +106,28 @@ class ParserProcessor(
             }
             """.trimIndent(),
         )
+
         sourcesWriter?.write(
             """
-            	;
-            }
+            package org.koitharu.kotatsu.parsers.model
+
+            /**
+             * Generated list of built-in sources.
+             *
+             * Sources are plain [ParserSource] values rather than enum constants, so a parser
+             * bundle can provide additional sources without recompiling the host application.
+             */
+            public object MangaParserSource {
+
             """.trimIndent(),
+        )
+        sourcesWriter?.write(entries.toString())
+        val list = names.joinToString(", ")
+        sourcesWriter?.write(
+            "\n\t@JvmField\n\tpublic val entries: List<ParserSource> = listOf($list)\n\n" +
+                "\tpublic fun valueOf(name: String): ParserSource =\n" +
+                "\t\tentries.firstOrNull { it.name == name }\n" +
+                "\t\t\t?: error(\"Unknown manga source: ${'$'}name\")\n}\n",
         )
         return totalCount
     }
@@ -131,8 +138,9 @@ class ParserProcessor(
     }
 
     private inner class ParserVisitor(
-        private val sourcesWriter: Writer?,
+        private val sourcesWriter: StringBuilder?,
         private val factoryWriter: Writer?,
+        private val names: MutableList<String>,
     ) : KSVisitorVoid() {
         private val titles = HashMap<String, String>()
 
@@ -176,6 +184,7 @@ class ParserProcessor(
             }
 
             factoryWriter?.write("\t\"$name\" -> $className(context)\n")
+            names += name
             val deprecationString =
                 if (deprecation != null) {
                     val reason =
@@ -188,8 +197,9 @@ class ParserProcessor(
                     ""
                 }
             val localeComment = localeTitle?.toTitleCase(localeObj)?.let { " /* $it */" }.orEmpty()
-            sourcesWriter?.write(
-                "\t$deprecationString$name(\"$title\", $localeString$localeComment, $type, $isBroken),\n",
+            sourcesWriter?.append(
+                "\t$deprecationString@JvmField\n" +
+                    "\tpublic val $name: ParserSource = ParserSource(\"$name\", \"$title\", $localeString, $type, $isBroken)$localeComment\n",
             )
         }
     }

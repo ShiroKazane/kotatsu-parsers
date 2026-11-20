@@ -23,7 +23,7 @@ import java.util.*
 
 internal abstract class MangaPlusParser(
 	context: MangaLoaderContext,
-	source: MangaParserSource,
+	source: ParserSource,
 	private val sourceLang: String,
 ) : SinglePageMangaParser(context, source), Interceptor {
 

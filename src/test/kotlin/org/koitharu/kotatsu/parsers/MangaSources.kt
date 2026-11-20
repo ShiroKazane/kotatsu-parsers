@@ -5,10 +5,11 @@ import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.ArgumentsProvider
 import org.junit.jupiter.params.provider.ArgumentsSource
 import org.koitharu.kotatsu.parsers.model.MangaParserSource
+import org.koitharu.kotatsu.parsers.model.ParserSource
 import java.util.stream.Stream
 
 /**
- * Parameterizes a test over [MangaParserSource] entries.
+ * Parameterizes a test over [ParserSource] entries.
  *
  * Set the `PARSERS_TEST_SOURCES` environment variable to a comma separated list of
  * source names (e.g. `DOUJINDESU,KIRYUU,MANGADEX`) to restrict the run, otherwise all

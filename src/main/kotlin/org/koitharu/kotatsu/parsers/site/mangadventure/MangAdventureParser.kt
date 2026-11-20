@@ -14,7 +14,7 @@ import java.util.*
 
 internal abstract class MangAdventureParser(
 	context: MangaLoaderContext,
-	source: MangaParserSource,
+	source: ParserSource,
 	domain: String,
 	pageSize: Int = 25,
 ) : PagedMangaParser(context, source, pageSize) {

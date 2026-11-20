@@ -20,7 +20,7 @@ import javax.crypto.spec.SecretKeySpec
 
 internal abstract class LineWebtoonsParser(
 	context: MangaLoaderContext,
-	source: MangaParserSource,
+	source: ParserSource,
 ) : AbstractMangaParser(context, source) {
 
 	override val filterCapabilities: MangaListFilterCapabilities

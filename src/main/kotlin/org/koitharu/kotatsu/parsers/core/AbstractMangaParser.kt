@@ -22,7 +22,7 @@ import java.util.*
 @InternalParsersApi
 public abstract class AbstractMangaParser @InternalParsersApi constructor(
 	@property:InternalParsersApi public val context: MangaLoaderContext,
-	public final override val source: MangaParserSource,
+	public final override val source: ParserSource,
 ) : MangaParser {
 
 	public final override val searchQueryCapabilities: MangaSearchQueryCapabilities

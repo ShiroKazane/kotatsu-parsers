@@ -17,7 +17,7 @@ import java.util.*
 
 internal abstract class HotComicsParser(
 	context: MangaLoaderContext,
-	source: MangaParserSource,
+	source: ParserSource,
 	domain: String,
 	pageSize: Int = 24,
 ) : PagedMangaParser(context, source, pageSize) {

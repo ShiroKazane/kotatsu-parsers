@@ -17,7 +17,7 @@ import java.util.*
 
 internal abstract class NineMangaParser(
 	context: MangaLoaderContext,
-	source: MangaParserSource,
+	source: ParserSource,
 	defaultDomain: String,
 ) : PagedMangaParser(context, source, pageSize = 26), Interceptor {
 

@@ -5,6 +5,7 @@ import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import org.koitharu.kotatsu.parsers.model.Manga
 import org.koitharu.kotatsu.parsers.model.MangaParserSource
 import org.koitharu.kotatsu.parsers.model.RATING_UNKNOWN
+import org.koitharu.kotatsu.parsers.model.ParserSource
 import org.koitharu.kotatsu.parsers.util.LONG_HASH_SEED
 import org.koitharu.kotatsu.parsers.util.toRelativeUrl
 
@@ -54,7 +55,7 @@ inline operator fun <T> List<T>.component6(): T = get(5)
 @Suppress("NOTHING_TO_INLINE")
 inline operator fun <T> List<T>.component7(): T = get(6)
 
-fun mangaOf(source: MangaParserSource, url: String): Manga {
+fun mangaOf(source: ParserSource, url: String): Manga {
 	val httpUrl = url.toHttpUrlOrNull()
 	var id = LONG_HASH_SEED
 	source.name.forEach { c -> id = 31 * id + c.code }

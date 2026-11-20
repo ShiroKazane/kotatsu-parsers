@@ -6,12 +6,13 @@ import org.koitharu.kotatsu.parsers.model.Manga
 import org.koitharu.kotatsu.parsers.model.MangaParserSource
 import org.koitharu.kotatsu.parsers.model.search.MangaSearchQuery
 import org.koitharu.kotatsu.parsers.model.search.SearchableField
+import org.koitharu.kotatsu.parsers.model.ParserSource
 import org.koitharu.kotatsu.parsers.util.Paginator
 
 @Deprecated("Too complex. Use PagedMangaParser instead")
 internal abstract class FlexiblePagedMangaParser(
 	context: MangaLoaderContext,
-	source: MangaParserSource,
+	source: ParserSource,
 	@VisibleForTesting(otherwise = VisibleForTesting.PROTECTED) @JvmField public val pageSize: Int,
 	searchPageSize: Int = pageSize,
 ) : FlexibleMangaParser(context, source) {

@@ -7,12 +7,13 @@ import org.koitharu.kotatsu.parsers.model.Manga
 import org.koitharu.kotatsu.parsers.model.MangaListFilter
 import org.koitharu.kotatsu.parsers.model.MangaParserSource
 import org.koitharu.kotatsu.parsers.model.SortOrder
+import org.koitharu.kotatsu.parsers.model.ParserSource
 import org.koitharu.kotatsu.parsers.util.Paginator
 
 @InternalParsersApi
 public abstract class PagedMangaParser(
 	context: MangaLoaderContext,
-	source: MangaParserSource,
+	source: ParserSource,
 	@VisibleForTesting(otherwise = VisibleForTesting.PROTECTED) @JvmField public val pageSize: Int,
 	searchPageSize: Int = pageSize,
 ) : AbstractMangaParser(context, source) {

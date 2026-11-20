@@ -25,6 +25,7 @@ import org.koitharu.kotatsu.parsers.model.MangaState
 import org.koitharu.kotatsu.parsers.model.MangaTag
 import org.koitharu.kotatsu.parsers.model.RATING_UNKNOWN
 import org.koitharu.kotatsu.parsers.model.SortOrder
+import org.koitharu.kotatsu.parsers.model.ParserSource
 import org.koitharu.kotatsu.parsers.network.OkHttpWebClient
 import org.koitharu.kotatsu.parsers.network.WebClient
 import org.koitharu.kotatsu.parsers.util.attrAsAbsoluteUrl
@@ -63,7 +64,7 @@ private const val MIN_SPLIT_COUNT = 5
 @Suppress("CustomX509TrustManager")
 internal abstract class MangaFireParser(
 	context: MangaLoaderContext,
-	source: MangaParserSource,
+	source: ParserSource,
 	private val siteLang: String,
 ) : PagedMangaParser(context, source, 30), Interceptor, MangaParserAuthProvider {
 

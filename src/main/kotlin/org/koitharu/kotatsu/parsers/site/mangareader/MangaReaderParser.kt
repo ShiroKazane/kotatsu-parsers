@@ -20,7 +20,7 @@ import java.util.EnumSet
 
 internal abstract class MangaReaderParser(
 	context: MangaLoaderContext,
-	source: MangaParserSource,
+	source: ParserSource,
 	domain: String,
 	pageSize: Int,
 	searchPageSize: Int,

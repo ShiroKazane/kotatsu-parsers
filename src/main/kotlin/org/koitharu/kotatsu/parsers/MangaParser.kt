@@ -15,7 +15,7 @@ import java.util.*
 
 public interface MangaParser : Interceptor {
 
-	public val source: MangaParserSource
+	public val source: ParserSource
 
 	/**
 	 * Supported [SortOrder] variants. Must not be empty.

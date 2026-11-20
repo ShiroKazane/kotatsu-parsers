@@ -19,7 +19,7 @@ import java.util.*
 @Deprecated("Too complex. Use AbstractMangaParser instead")
 internal abstract class FlexibleMangaParser @InternalParsersApi constructor(
 	@property:InternalParsersApi val context: MangaLoaderContext,
-	final override val source: MangaParserSource,
+	final override val source: ParserSource,
 ) : MangaParser {
 
 	override val config: MangaSourceConfig by lazy { context.getConfig(source) }

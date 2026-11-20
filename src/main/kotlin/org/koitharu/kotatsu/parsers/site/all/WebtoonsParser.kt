@@ -16,7 +16,7 @@ import java.util.EnumSet
 
 internal abstract class WebtoonsParser(
 	context: MangaLoaderContext,
-	source: MangaParserSource,
+	source: ParserSource,
 ) : AbstractMangaParser(context, source) {
 
 	override val configKeyDomain = ConfigKey.Domain("webtoons.com")
@@ -217,7 +217,7 @@ internal abstract class WebtoonsParser(
 
 	private fun createMangaFromElement(
 		element: Element,
-		source: MangaParserSource,
+		source: ParserSource,
 		selectedGenre: MangaTag? = null,
 	): Manga {
 		val href = element.absUrl("href")

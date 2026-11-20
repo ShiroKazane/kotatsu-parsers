@@ -11,7 +11,7 @@ import java.util.*
 
 internal abstract class MTLParser(
 	context: MangaLoaderContext,
-	source: MangaParserSource,
+	source: ParserSource,
 	domain: String,
 ) : PagedMangaParser(context, source, 24) {
 

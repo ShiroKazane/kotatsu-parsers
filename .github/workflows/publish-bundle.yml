@@ -68,12 +68,18 @@ jobs:
           # Types shared with the host app must be resolved from the host class
           # loader, otherwise class identity breaks across class loaders.
           api="bundle-classes/org/koitharu/kotatsu/parsers"
-          shared="MangaLoaderContext MangaParser"
-          shared="$shared MangaParserSource ParserBundleProvider"
+          shared="MangaLoaderContext MangaParser ParserBundleProvider"
           for cls in $shared; do
             rm -f "$api/$cls.class"
           done
+          # The generated source constants stay in the bundle: they list every
+          # source it ships, including ones the app was not built with.
+          keep="$(mktemp -d)"
+          mv "$api"/model/MangaParserSource*.class "$keep/" 2>/dev/null || true
           rm -rf "$api/model"
+          mkdir -p "$api/model"
+          mv "$keep"/*.class "$api/model/" 2>/dev/null || true
+          rm -rf "$keep"
           ( cd bundle-classes && jar cf ../bundle-input.jar . )
           mkdir -p bundle-dex
           d8 --lib "$ANDROID_HOME/platforms/android-36/android.jar" \
@@ -122,7 +128,7 @@ jobs:
             --arg commit "$GITHUB_SHA" \
             --arg releaseName "Parser Build $short_sha" \
             --arg changes "$changes" \
-            '{version: $version, apiVersion: 1, minAppVersion: 1,
+            '{version: $version, apiVersion: 2, minAppVersion: 1,
               bundleUrl: ($bundleUrl + $bundlePath), sha256: $sha256,
               commit: $commit, releaseName: $releaseName,
               changes: $changes}' \

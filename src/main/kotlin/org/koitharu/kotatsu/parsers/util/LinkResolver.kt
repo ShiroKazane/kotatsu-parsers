@@ -17,14 +17,14 @@ public class LinkResolver internal constructor(
 
 	private val source = suspendLazy(Dispatchers.Default, ::resolveSource)
 
-	public suspend fun getSource(): MangaParserSource? = source.get()
+	public suspend fun getSource(): ParserSource? = source.get()
 
 	public suspend fun getManga(): Manga? {
 		val parser = context.newParserInstance(source.get() ?: return null)
 		return parser.resolveLink(this, link) ?: resolveManga(parser)
 	}
 
-	private suspend fun resolveSource(): MangaParserSource? = runInterruptible(Dispatchers.Default) {
+	private suspend fun resolveSource(): ParserSource? = runInterruptible(Dispatchers.Default) {
 		val domains = setOfNotNull(link.host, link.topPrivateDomain())
 		for (s in MangaParserSource.entries) {
 			val parser = context.newParserInstance(s)

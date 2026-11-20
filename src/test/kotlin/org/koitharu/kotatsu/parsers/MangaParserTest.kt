@@ -25,7 +25,7 @@ internal class MangaParserTest {
 
     @ParameterizedTest(name = "{index}|list|{0}")
     @MangaSources
-    fun list(source: MangaParserSource) =
+    fun list(source: ParserSource) =
         runTest(timeout = timeout) {
             val parser = context.newParserInstance(source)
             val list = parser.getList(MangaSearchQuery.Builder().build())
@@ -35,7 +35,7 @@ internal class MangaParserTest {
 
     @ParameterizedTest(name = "{index}|pagination|{0}")
     @MangaSources
-    fun pagination(source: MangaParserSource) =
+    fun pagination(source: ParserSource) =
         runTest(timeout = timeout) {
             val parser = context.newParserInstance(source)
             if (parser is SinglePageMangaParser) {
@@ -66,7 +66,7 @@ internal class MangaParserTest {
 
     @ParameterizedTest(name = "{index}|search|{0}")
     @MangaSources
-    fun searchByTitleName(source: MangaParserSource) =
+    fun searchByTitleName(source: ParserSource) =
         runTest(timeout = timeout) {
             val parser = context.newParserInstance(source)
             val subject =
@@ -94,7 +94,7 @@ internal class MangaParserTest {
 
     @ParameterizedTest(name = "{index}|tags|{0}")
     @MangaSources
-    fun tags(source: MangaParserSource) =
+    fun tags(source: ParserSource) =
         runTest(timeout = timeout) {
             val parser = context.newParserInstance(source)
             val tags = parser.getFilterOptions().availableTags
@@ -126,7 +126,7 @@ internal class MangaParserTest {
 
     @ParameterizedTest(name = "{index}|tags_multiple|{0}")
     @MangaSources
-    fun tagsMultiple(source: MangaParserSource) =
+    fun tagsMultiple(source: ParserSource) =
         runTest(timeout = timeout) {
             val parser = context.newParserInstance(source)
 // 		if (!parser.filterCapabilities.isMultipleTagsSupported) return@runTest
@@ -153,7 +153,7 @@ internal class MangaParserTest {
 
     @ParameterizedTest(name = "{index}|locale|{0}")
     @MangaSources
-    fun locale(source: MangaParserSource) =
+    fun locale(source: ParserSource) =
         runTest(timeout = timeout) {
             val parser = context.newParserInstance(source)
             val locales = parser.getFilterOptions().availableLocales
@@ -188,7 +188,7 @@ internal class MangaParserTest {
 
     @ParameterizedTest(name = "{index}|details|{0}")
     @MangaSources
-    fun details(source: MangaParserSource) =
+    fun details(source: ParserSource) =
         runTest(timeout = timeout) {
             val parser = context.newParserInstance(source)
             val list = parser.getList(MangaSearchQuery.EMPTY)
@@ -222,7 +222,7 @@ internal class MangaParserTest {
 
     @ParameterizedTest(name = "{index}|pages|{0}")
     @MangaSources
-    fun pages(source: MangaParserSource) =
+    fun pages(source: ParserSource) =
         runTest(timeout = timeout) {
             val parser = context.newParserInstance(source)
             val list = parser.getList(MangaSearchQuery.EMPTY)
@@ -262,7 +262,7 @@ internal class MangaParserTest {
 
     @ParameterizedTest(name = "{index}|favicon|{0}")
     @MangaSources
-    fun favicon(source: MangaParserSource) =
+    fun favicon(source: ParserSource) =
         runTest(timeout = timeout) {
             val parser = context.newParserInstance(source)
             val favicons = parser.getFavicons()
@@ -279,7 +279,7 @@ internal class MangaParserTest {
 
     @ParameterizedTest(name = "{index}|domain|{0}")
     @MangaSources
-    fun domain(source: MangaParserSource) =
+    fun domain(source: ParserSource) =
         runTest(timeout = timeout) {
             val parser = context.newParserInstance(source)
             val defaultDomain = parser.domain
@@ -300,7 +300,7 @@ internal class MangaParserTest {
 
     @ParameterizedTest(name = "{index}|link|{0}")
     @MangaSources
-    fun link(source: MangaParserSource) =
+    fun link(source: ParserSource) =
         runTest(timeout = timeout) {
             val parser = context.newParserInstance(source)
             val manga = parser.getList(MangaSearchQuery.Builder().build()).first()
@@ -316,7 +316,7 @@ internal class MangaParserTest {
     @ParameterizedTest(name = "{index}|authorization|{0}")
     @MangaSources
     @Disabled
-    fun authorization(source: MangaParserSource) =
+    fun authorization(source: ParserSource) =
         runTest(timeout = timeout) {
             val parser = context.newParserInstance(source)
             if (parser is MangaParserAuthProvider) {

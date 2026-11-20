@@ -13,7 +13,7 @@ import java.util.*
 
 internal abstract class GuyaParser(
 	context: MangaLoaderContext,
-	source: MangaParserSource,
+	source: ParserSource,
 	domain: String,
 ) : SinglePageMangaParser(context, source) {
 

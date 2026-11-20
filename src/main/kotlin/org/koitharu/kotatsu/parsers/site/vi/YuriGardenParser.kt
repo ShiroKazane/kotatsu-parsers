@@ -27,7 +27,7 @@ import java.util.*
 
 internal abstract class YuriGardenParser(
 	context: MangaLoaderContext,
-	source: MangaParserSource,
+	source: ParserSource,
 	domain: String,
 	protected val isR18Enable: Boolean = false
 ) : PagedMangaParser(context, source, 18) {

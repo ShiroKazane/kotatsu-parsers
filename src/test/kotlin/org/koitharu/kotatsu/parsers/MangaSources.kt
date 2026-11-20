@@ -29,10 +29,10 @@ internal class MangaSourcesProvider : ArgumentsProvider {
                 ?.filter(String::isNotEmpty)
                 ?.toSet()
                 .orEmpty()
-        return MangaParserSource.entries
-            .asSequence()
+        val arguments = MangaParserSource.entries
             .filter { filter.isEmpty() || it.name in filter }
             .map { Arguments.of(it) }
-            .asStream()
+            .toTypedArray()
+        return Stream.of(*arguments)
     }
 }

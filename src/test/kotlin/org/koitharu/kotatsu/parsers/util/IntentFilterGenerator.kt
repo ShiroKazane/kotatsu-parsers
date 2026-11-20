@@ -11,6 +11,7 @@ class IntentFilterGenerator {
     @Test
     fun generateIntentFilter() {
         val output = File("out/test/resources/intent-filter.xml")
+        output.parentFile?.mkdirs()
         output.printWriter(Charsets.UTF_8).use { writer ->
             writer.appendLine("<intent-filter android:autoVerify=\"false\">")
             writer.appendTab().appendLine("<action android:name=\"android.intent.action.VIEW\" />")

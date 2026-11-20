@@ -180,6 +180,7 @@ internal class KiryuuParser(
 
     private suspend fun loadChapters(slug: String): List<MangaChapter> {
         val document = webClient.httpGet("/manga/$slug/".toAbsoluteUrl(domain)).parseHtml()
+        val seen = HashSet<Pair<Int, Float>>()
         return document
             .select("#chapter-list div[data-chapter-number]")
             .mapNotNull { element ->
@@ -198,7 +199,8 @@ internal class KiryuuParser(
                     branch = null,
                     source = source,
                 )
-            }.reversed()
+            }.filter { it.number <= 0f || seen.add(it.volume to it.number) }
+            .reversed()
     }
 
     private fun JSONObject.toManga(genreNames: Map<String, Term>): Manga {

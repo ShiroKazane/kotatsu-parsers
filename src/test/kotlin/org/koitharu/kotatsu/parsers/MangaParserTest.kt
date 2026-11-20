@@ -15,6 +15,7 @@ import org.koitharu.kotatsu.parsers.model.search.SearchableField.*
 import org.koitharu.kotatsu.parsers.util.medianOrNull
 import org.koitharu.kotatsu.parsers.util.mimeType
 import org.koitharu.kotatsu.test_util.*
+import java.util.Locale
 import kotlin.time.Duration.Companion.minutes
 
 //@ExtendWith(AuthCheckExtension::class)
@@ -39,9 +40,11 @@ internal class MangaParserTest {
 		if (parser is SinglePageMangaParser) {
 			return@runTest
 		}
-		val page1 = parser.getList(MangaSearchQuery.EMPTY)
+		val page1 = parser.getList(stableQuery(parser))
 		val page2 =
-			parser.getList(MangaSearchQuery.Builder().offset(page1.size).build())
+			parser.getList(
+				MangaSearchQuery.Builder().offset(page1.size).order(stableOrder(parser)).build(),
+			)
 		if (parser is PagedMangaParser) {
 			assert(parser.pageSize >= page1.size) {
 				"Page size is ${page1.size} but ${parser.pageSize} expected"
@@ -135,17 +138,24 @@ internal class MangaParserTest {
 		if (locales.isEmpty()) {
 			return@runTest
 		}
-		val locale = locales.random()
+		val locale =
+			locales.sortedBy { it.toLanguageTag() }.firstOrNull { it.hasManga(parser) }
+				?: error("No locale with manga found among $locales")
 		val list = parser.getList(
 			MangaSearchQuery.Builder()
 				.criterion(Include(LANGUAGE, setOf(locale)))
-				.criterion(Include(LANGUAGE, setOf(locale)))
-				.criterion(Include(ORIGINAL_LANGUAGE, setOf(locales.random())))
 				.build(),
 		)
 		checkMangaList(list, locale.toString())
 		assert(list.all { it.source == source })
 	}
+
+	private suspend fun Locale.hasManga(parser: MangaParser): Boolean =
+		parser.getList(
+			MangaSearchQuery.Builder()
+				.criterion(Include(LANGUAGE, setOf(this)))
+				.build(),
+		).isNotEmpty()
 
 
 	@ParameterizedTest(name = "{index}|details|{0}")
@@ -287,6 +297,12 @@ internal class MangaParserTest {
 			}
 		}
 	}
+
+	private fun <T : MangaParser> stableOrder(parser: T): SortOrder? =
+		SortOrder.ALPHABETICAL.takeIf { it in parser.availableSortOrders }
+
+	private fun <T : MangaParser> stableQuery(parser: T): MangaSearchQuery =
+		stableOrder(parser)?.let { MangaSearchQuery.Builder().order(it).build() } ?: MangaSearchQuery.EMPTY
 
 	private fun String.isCapitalized(): Boolean {
 		return !first().isLowerCase()

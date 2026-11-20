@@ -45,7 +45,6 @@ internal class DoujinDesuParser(
                 isMultipleTagsSupported = true,
                 isSearchSupported = true,
                 isSearchWithFiltersSupported = true,
-                isAuthorSearchSupported = true,
             )
 
     override suspend fun getFilterOptions() =
@@ -125,17 +124,11 @@ internal class DoujinDesuParser(
         order: SortOrder,
         filter: MangaListFilter,
     ): List<Manga> {
-        val author = filter.author?.trim().orEmpty()
-        if (author.isNotEmpty() && filter.query.isNullOrEmpty() && filter.tags.isEmpty() &&
-            filter.types.isEmpty() && filter.states.isEmpty()
-        ) {
-            getListPageByAuthor(page, order, author)?.let { return it }
-        }
         val url =
             urlBuilder()
                 .addPathSegments("api/manga")
                 .apply {
-                    addQueryParameter("search", filter.query ?: filter.author.orEmpty())
+                    addQueryParameter("search", filter.query.orEmpty())
                     addQueryParameter("genre", filter.tags.joinToString(",") { it.key })
                     addQueryParameter("status", filter.states.firstOrNull()?.apiValue())
                     addQueryParameter("type", filter.types.firstOrNull()?.apiValue())
@@ -146,32 +139,6 @@ internal class DoujinDesuParser(
         return (decode(webClient.httpGet(url, headers())) as JSONArray)
             .asTypedList<JSONObject>()
             .map(::toManga)
-    }
-
-    private suspend fun getListPageByAuthor(
-        page: Int,
-        order: SortOrder,
-        author: String,
-    ): List<Manga>? {
-        val url =
-            urlBuilder()
-                .addPathSegments("api/taxonomy/authors")
-                .addPathSegment(author)
-                .addQueryParameter("page", page.toString())
-                .addQueryParameter("sort", if (order == SortOrder.POPULARITY) "popular" else "latest")
-                .addQueryParameter("limit", pageSize.toString())
-                .build()
-        val json =
-            try {
-                decode(webClient.httpGet(url, headers())) as? JSONObject ?: return null
-            } catch (_: NotFoundException) {
-                return null
-            }
-        return json
-            .optJSONArray("mangaList")
-            ?.asTypedList<JSONObject>()
-            ?.map { toManga(it).copy(authors = setOf(author.normalizeName())) }
-            .orEmpty()
     }
 
     override suspend fun resolveLink(

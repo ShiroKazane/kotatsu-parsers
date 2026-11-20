@@ -165,10 +165,11 @@ internal class YurivanParser(
         for (i in 0 until chaptersJson.length()) {
             val row = chaptersJson.getJSONObject(i)
             if (row.optBoolean("has_explicit_scene", false)) {
-                explicitChapters += row.toChapter(storyId).copy(
-                    id = generateUid("${row.getString("id")}#explicit"),
-                    branch = BRANCH_EXPLICIT,
-                )
+                explicitChapters +=
+                    row.toChapter(storyId).copy(
+                        id = generateUid("${row.getString("id")}#explicit"),
+                        branch = BRANCH_EXPLICIT,
+                    )
             }
         }
         return story.toManga().copy(chapters = chapters + explicitChapters)

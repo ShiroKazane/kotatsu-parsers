@@ -1,0 +1,62 @@
+name: Check parsers
+
+on:
+  push:
+    branches:
+      - dev
+    paths:
+      - 'src/**'
+      - 'build.gradle.kts'
+      - 'buildSrc/**'
+      - 'gradle/**'
+      - 'gradle.properties'
+      - 'kotatsu-parsers-ksp/**'
+      - '.github/workflows/check.yml'
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'build.gradle.kts'
+      - 'buildSrc/**'
+      - 'gradle/**'
+      - 'gradle.properties'
+      - 'kotatsu-parsers-ksp/**'
+      - '.github/workflows/check.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  GRADLE_OPTS: >-
+    -Dorg.gradle.workers.max=4
+    -Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g
+  # Only live-test the parsers under active development
+  PARSERS_TEST_SOURCES: DOUJINDESU,KIRYUU,MANGADEX
+
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.0.0
+        with:
+          persist-credentials: false
+
+      - name: Set up Java
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          java-version: '21'
+          distribution: temurin
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v5
+
+      - name: Compile parsers
+        run: ./gradlew compileKotlin
+
+      - name: Test parsers
+        run: ./gradlew test --stacktrace

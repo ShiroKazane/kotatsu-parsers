@@ -247,12 +247,19 @@ internal class DoujinDesuParser(
 
     private fun cleanDescription(value: String): String? {
         if (value.isBlank()) return null
-        val document = Jsoup.parseBodyFragment(Entities.unescape(value))
+        val unescaped = Entities.unescape(value)
+        // the site appends its own `Download Batch` block with mirror links
+        val cutoff = unescaped.indexOf("Download Batch", ignoreCase = true)
+        val source = if (cutoff >= 0) unescaped.substring(0, cutoff) else unescaped
+        val document = Jsoup.parseBodyFragment(source)
         document.select("a, script, style, img, iframe, video, source").remove()
         return AD_URL
-            .replace(document.text(), "")
+            .replace(document.text(), " ")
+            .replace(SPECIAL_SPACES, " ")
+            .replace(PIPES, " ")
             .replace(WHITESPACE, " ")
             .trim()
+            .takeUnless(::isPlaceholder)
             .nullIfEmpty()
     }
 
@@ -314,6 +321,7 @@ internal class DoujinDesuParser(
         val AD_URL = Regex("(?i)\\b(?:https?://|www\\.)\\S+")
         val WHITESPACE = Regex("\\s+")
         val SPECIAL_SPACES = Regex("[\\u00A0\\u1680\\u2000-\\u200B\\u202F\\u205F\\u3000\\uFEFF]")
+        val PIPES = Regex("\\s*\\|(\\s*\\|)*\\s*")
         const val UNKNOWN_NAME = "-"
         const val APP_SECRET = "dfdf72051dbfdc7d76889ebd31324e74"
         const val TOKEN_COOKIE = "doujindesu_token"

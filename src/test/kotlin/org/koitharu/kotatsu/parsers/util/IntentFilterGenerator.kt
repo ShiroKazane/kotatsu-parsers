@@ -7,7 +7,6 @@ import org.koitharu.kotatsu.parsers.newParser
 import java.io.File
 
 class IntentFilterGenerator {
-
     @Test
     fun generateIntentFilter() {
         val output = File("out/test/resources/intent-filter.xml")
@@ -25,7 +24,11 @@ class IntentFilterGenerator {
             for (source in MangaParserSource.entries) {
                 val parser = source.newParser(MangaLoaderContextMock)
                 parser.configKeyDomain.presetValues.forEach { domain ->
-                    writer.appendTab().append("<data android:host=\"").append(domain).appendLine("\" />")
+                    writer
+                        .appendTab()
+                        .append("<data android:host=\"")
+                        .append(domain)
+                        .appendLine("\" />")
                 }
             }
             writer.appendLine()

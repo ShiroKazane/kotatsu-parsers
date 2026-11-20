@@ -202,14 +202,20 @@ internal class DoujinDesuParser(
             decode(
                 webClient.httpGet("/api/chapters/${chapter.url}".toAbsoluteUrl(domain), headers()),
             ) as JSONObject
-        return json.optJSONArray("content_urls")?.asTypedList<String>().orEmpty().map { url ->
-            MangaPage(
-                id = generateUid(url),
-                url = url,
-                preview = null,
-                source = source,
-            )
-        }
+        // the API repeats the last image, which would produce duplicate page ids
+        return json
+            .optJSONArray("content_urls")
+            ?.asTypedList<String>()
+            .orEmpty()
+            .distinct()
+            .map { url ->
+                MangaPage(
+                    id = generateUid(url),
+                    url = url,
+                    preview = null,
+                    source = source,
+                )
+            }
     }
 
     private suspend fun fetchAvailableTags(): Set<MangaTag> =

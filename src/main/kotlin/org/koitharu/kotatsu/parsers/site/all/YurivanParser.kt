@@ -226,13 +226,16 @@ internal class YurivanParser(
     }
 
     private fun JSONObject.description(): String? {
-        optJSONObject("descriptions")?.let { descriptions ->
-            descriptions.getDescription("en")?.let { return it }
-            descriptions.keys().asSequence().forEach { key ->
-                descriptions.getDescription(key)?.let { return it }
-            }
+        val descriptions = optJSONObject("descriptions")
+        descriptions?.getDescription("en")?.let { return it }
+        // the site keeps the original English text in `caption` even when only
+        // translations exist in `descriptions`
+        getStringOrNull("caption")?.let { return it }
+        descriptions ?: return null
+        descriptions.keys().asSequence().forEach { key ->
+            descriptions.getDescription(key)?.let { return it }
         }
-        return getStringOrNull("caption")
+        return null
     }
 
     private fun JSONObject.getDescription(locale: String): String? =

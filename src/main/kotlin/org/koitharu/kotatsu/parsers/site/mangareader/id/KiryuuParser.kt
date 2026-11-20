@@ -131,33 +131,29 @@ internal class KiryuuParser(
         val index = segments.indexOf("manga")
         if (index < 0) return null
         val slug = segments.getOrNull(index + 1)?.nullIfEmpty() ?: return null
-        return getDetails(
-            Manga(
-                id = generateUid(slug),
-                title = slug,
-                url = slug,
-                publicUrl = link.toString(),
-                source = source,
-            ),
-        )
+        return loadDetails(slug)
     }
 
-    override suspend fun getDetails(manga: Manga): Manga {
+    override suspend fun getDetails(manga: Manga): Manga =
+        loadDetails(manga.url).copy(
+            id = manga.id,
+            url = manga.url,
+            publicUrl = "https://$domain/manga/${manga.url}/",
+        )
+
+    private suspend fun loadDetails(slug: String): Manga {
         val genres = genresLazy.get()
         val url =
             urlBuilder()
                 .addPathSegments("wp-json/wp/v2/manga")
-                .addQueryParameter("slug", manga.url)
+                .addQueryParameter("slug", slug)
                 .addQueryParameter("_embed", "1")
                 .build()
         val json =
             webClient.httpGet(url).parseJsonArray().optJSONObject(0)
-                ?: throw NotFoundException(manga.url, url.toString())
+                ?: throw NotFoundException(slug, url.toString())
         return json.toManga(genres).copy(
-            id = manga.id,
-            url = manga.url,
-            publicUrl = "https://$domain/manga/${manga.url}/",
-            chapters = loadChapters(manga.url),
+            chapters = loadChapters(slug),
         )
     }
 

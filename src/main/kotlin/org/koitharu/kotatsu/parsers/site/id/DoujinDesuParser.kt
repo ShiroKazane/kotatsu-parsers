@@ -214,7 +214,7 @@ internal class DoujinDesuParser(
             publicUrl = "/manga/${json.getString("slug")}".toAbsoluteUrl(domain),
             rating = (json.optDouble("rating", RATING_UNKNOWN.toDouble()) / 10.0).toFloat(),
             contentRating = ContentRating.ADULT,
-            coverUrl = json.getStringOrNull("cover_url"),
+            coverUrl = json.getStringOrNull("cover_url")?.toAbsoluteUrl(domain),
             tags =
                 json
                     .optJSONArray("manga_genres")
@@ -230,7 +230,7 @@ internal class DoujinDesuParser(
                     else -> null
                 },
             authors = json.authorNames(),
-            largeCoverUrl = json.getStringOrNull("banner_url"),
+            largeCoverUrl = json.getStringOrNull("banner_url")?.toAbsoluteUrl(domain),
             description = cleanDescription(json.getStringOrNull("description").orEmpty()),
             chapters = null,
             source = source,

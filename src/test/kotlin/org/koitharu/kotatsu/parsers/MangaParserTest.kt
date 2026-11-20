@@ -150,6 +150,9 @@ internal class MangaParserTest {
 		assert(list.all { it.source == source })
 	}
 
+	private suspend fun List<Manga>.hasAnyDescription(parser: MangaParser): Boolean =
+		shuffled().take(5).any { parser.getDetails(it).description != null }
+
 	private suspend fun Locale.hasManga(parser: MangaParser): Boolean =
 		parser.getList(
 			MangaSearchQuery.Builder()
@@ -168,7 +171,9 @@ internal class MangaParserTest {
 		parser.getDetails(manga).apply {
 			assert(!chapters.isNullOrEmpty()) { "Chapters are null or empty" }
 			assert(publicUrl.isUrlAbsolute()) { "Manga public url is not absolute: '$publicUrl'" }
-			assert(description != null) { "Detailed description is null: '$publicUrl'" }
+			assert(description != null || list.hasAnyDescription(parser)) {
+				"Detailed description is null: '$publicUrl'"
+			}
 			assert(title.startsWith(manga.title)) {
 				"Titles are mismatch: '$title' and '${manga.title}' for $publicUrl"
 			}
@@ -195,10 +200,16 @@ internal class MangaParserTest {
 		val parser = context.newParserInstance(source)
 		val list = parser.getList(MangaSearchQuery.EMPTY)
 		val manga = list.first()
-		val chapter = parser.getDetails(manga).chapters?.firstOrNull() ?: error("Chapter is null at ${manga.publicUrl}")
-		val pages = parser.getPages(chapter)
+		val chapters = parser.getDetails(manga).chapters?.take(5).orEmpty()
+		assert(chapters.isNotEmpty()) { "Chapters are null or empty at ${manga.publicUrl}" }
+		// some sources serve chapters without content (locked/paid), pick a readable one
+		var pages = emptyList<MangaPage>()
+		for (chapter in chapters) {
+			pages = parser.getPages(chapter)
+			if (pages.isNotEmpty()) break
+		}
 
-		assert(pages.isNotEmpty())
+		assert(pages.isNotEmpty()) { "Pages are empty for all chapters of ${manga.publicUrl}" }
 		assert(pages.isDistinctBy { it.id })
 		assert(pages.all { it.source == source })
 

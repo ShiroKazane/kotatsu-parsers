@@ -155,7 +155,9 @@ internal class NHentaiParser(
         val japanese = getStringOrNull("japanese_title")
         val titleObject = optJSONObject("title")
         val pretty = titleObject?.getStringOrNull("pretty")
-        val title = english ?: pretty ?: japanese ?: id
+        // the detail endpoint exposes the title only as an object; search results use a flat field
+        val englishTitle = english ?: titleObject?.getStringOrNull("english")
+        val title = englishTitle ?: pretty ?: japanese ?: id
         val altTitles = LinkedHashSet<String>()
         if (pretty != null && !pretty.equals(title, ignoreCase = true)) {
             altTitles.add(pretty)
@@ -183,7 +185,7 @@ internal class NHentaiParser(
             contentRating = ContentRating.ADULT,
             coverUrl = coverPath?.let { "https://$THUMB_HOST/$it" },
             largeCoverUrl = coverPath?.let { "https://$THUMB_HOST/$it" },
-            description = null,
+            description = buildDescription(tags),
             tags =
                 tags.mapJSONNotNullToSet { tag ->
                     val name = tag.getStringOrNull("name") ?: return@mapJSONNotNullToSet null
@@ -199,6 +201,41 @@ internal class NHentaiParser(
                     .toSet(),
             source = source,
         )
+    }
+
+    /**
+     * The API exposes no synopsis, so summarize the gallery's own metadata instead:
+     * artist, parody/series, category, languages, page count and the tag list.
+     */
+    private fun JSONObject.buildDescription(tags: JSONArray): String? {
+        val byType = HashMap<String, MutableList<String>>()
+        for (i in 0 until tags.length()) {
+            val tag = tags.getJSONObject(i)
+            val type = tag.optString("type").nullIfEmpty() ?: continue
+            val name = tag.getStringOrNull("name") ?: continue
+            byType.getOrPut(type) { ArrayList() }.add(name)
+        }
+        fun named(type: String, label: String): String? = byType[type]
+            ?.joinToString(", ")
+            ?.takeIf { it.isNotEmpty() }
+            ?.let { "$label: $it" }
+
+        val lines = ArrayList<String>(6)
+        named("artist", "Artist")?.let(lines::add)
+        named("group", "Circle")?.let(lines::add)
+        named("parody", "Parody")?.let(lines::add)
+        named("character", "Characters")?.let(lines::add)
+        named("category", "Category")?.let(lines::add)
+        named("language", "Language")?.let(lines::add)
+        val pages = optInt("num_pages", 0)
+        if (pages > 0) {
+            lines.add("Pages: $pages")
+        }
+        byType["tag"]
+            ?.sorted()
+            ?.takeIf { it.isNotEmpty() }
+            ?.let { lines.add("Tags: ${it.joinToString(", ")}") }
+        return lines.takeIf { it.isNotEmpty() }?.joinToString("\n")
     }
 
     /**

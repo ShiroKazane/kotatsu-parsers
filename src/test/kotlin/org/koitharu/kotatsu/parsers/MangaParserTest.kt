@@ -130,22 +130,30 @@ internal class MangaParserTest {
         runTest(timeout = timeout) {
             val parser = context.newParserInstance(source)
 // 		if (!parser.filterCapabilities.isMultipleTagsSupported) return@runTest
-            val tags =
-                parser
-                    .getFilterOptions()
-                    .availableTags
-                    .shuffled()
-                    .take(2)
-                    .toSet()
-
-            val list =
-                parser.getList(
+            val allTags = parser.getFilterOptions().availableTags.toList()
+            var tags = allTags.shuffled().take(2).toSet()
+            var list = parser.getList(
+                MangaSearchQuery
+                    .Builder()
+                    .offset(0)
+                    .criterion(Include(TAG, tags))
+                    .build(),
+            )
+            // Most sources intersect tags, so a random pair may legitimately have no results.
+            // Retry a few combinations of the most popular tags before failing.
+            for (attempt in 0 until 5) {
+                if (list.isNotEmpty() || allTags.size < 2) {
+                    break
+                }
+                tags = allTags.shuffled().take(2).toSet()
+                list = parser.getList(
                     MangaSearchQuery
                         .Builder()
                         .offset(0)
                         .criterion(Include(TAG, tags))
                         .build(),
                 )
+            }
 
             checkMangaList(list, "${tags.joinToString { it.title }} (${tags.joinToString { it.key }})")
             assert(list.all { it.source == source })

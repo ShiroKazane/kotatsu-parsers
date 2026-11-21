@@ -9,129 +9,143 @@ import org.koitharu.kotatsu.parsers.util.*
 import java.util.*
 
 @MangaSourceParser("HENTAICROT", "HentaiCrot", "id", ContentType.HENTAI)
-internal class HentaiCrot(context: MangaLoaderContext) :
-	PagedMangaParser(context, MangaParserSource.HENTAICROT, 8) {
+internal class HentaiCrot(
+    context: MangaLoaderContext,
+) : PagedMangaParser(context, MangaParserSource.HENTAICROT, 8) {
+    override val configKeyDomain = ConfigKey.Domain("hentaicrot.com")
 
-	override val configKeyDomain = ConfigKey.Domain("hentaicrot.com")
+    override fun onCreateConfig(keys: MutableCollection<ConfigKey<*>>) {
+        super.onCreateConfig(keys)
+        keys.add(userAgentKey)
+    }
 
-	override fun onCreateConfig(keys: MutableCollection<ConfigKey<*>>) {
-		super.onCreateConfig(keys)
-		keys.add(userAgentKey)
-	}
+    override val availableSortOrders: Set<SortOrder> =
+        EnumSet.of(
+            SortOrder.UPDATED,
+        )
 
-	override val availableSortOrders: Set<SortOrder> = EnumSet.of(
-		SortOrder.UPDATED,
-	)
+    override val filterCapabilities: MangaListFilterCapabilities
+        get() =
+            MangaListFilterCapabilities(
+                isSearchSupported = true,
+                isMultipleTagsSupported = true,
+            )
 
-	override val filterCapabilities: MangaListFilterCapabilities
-		get() =
-			MangaListFilterCapabilities(
-				isSearchSupported = true,
-				isMultipleTagsSupported = true,
-			)
+    override suspend fun getFilterOptions() =
+        MangaListFilterOptions(
+            availableTags = fetchAvailableTags(),
+        )
 
-	override suspend fun getFilterOptions() = MangaListFilterOptions(
-		availableTags = fetchAvailableTags(),
-	)
+    override suspend fun getListPage(
+        page: Int,
+        order: SortOrder,
+        filter: MangaListFilter,
+    ): List<Manga> {
+        val url =
+            buildString {
+                append("https://")
+                append(domain)
+                when {
+                    !filter.query.isNullOrEmpty() -> {
+                        append("/page/")
+                        append(page)
+                        append("/?s=")
+                        append(filter.query.urlEncoded())
+                    }
 
-	override suspend fun getListPage(page: Int, order: SortOrder, filter: MangaListFilter): List<Manga> {
-		val url = buildString {
-			append("https://")
-			append(domain)
-			when {
-				!filter.query.isNullOrEmpty() -> {
-					append("/page/")
-					append(page)
-					append("/?s=")
-					append(filter.query.urlEncoded())
-				}
+                    else -> {
+                        if (filter.tags.isNotEmpty()) {
+                            // the site accepts several categories joined with a plus sign
+                            append("/category/")
+                            append(filter.tags.joinToString("+") { it.key })
+                            append('/')
+                        }
 
-				else -> {
-					if (filter.tags.isNotEmpty()) {
-						// the site accepts several categories joined with a plus sign
-						append("/category/")
-						append(filter.tags.joinToString("+") { it.key })
-						append('/')
-					}
+                        append("/page/")
+                        append(page)
+                        append('/')
+                    }
+                }
+            }
 
-					append("/page/")
-					append(page)
-					append('/')
-				}
-			}
-		}
+        val doc = webClient.httpGet(url).parseHtml()
+        return doc.select("div#content article").mapNotNull { div ->
+            val href = div.selectFirst("a")?.attrAsRelativeUrl("href") ?: return@mapNotNull null
+            Manga(
+                id = generateUid(href),
+                url = href,
+                publicUrl = href.toAbsoluteUrl(div.host ?: domain),
+                coverUrl = div.selectFirst("img")?.src()?.replace("-200x285", ""),
+                title = div.selectFirst("h2")?.text().orEmpty(),
+                altTitles = emptySet(),
+                rating = RATING_UNKNOWN,
+                tags = emptySet(),
+                authors = emptySet(),
+                state = null,
+                source = source,
+                contentRating = if (isNsfwSource) ContentRating.ADULT else null,
+            )
+        }
+    }
 
-		val doc = webClient.httpGet(url).parseHtml()
-		return doc.select("div#content article").mapNotNull { div ->
-			val href = div.selectFirst("a")?.attrAsRelativeUrl("href") ?: return@mapNotNull null
-			Manga(
-				id = generateUid(href),
-				url = href,
-				publicUrl = href.toAbsoluteUrl(div.host ?: domain),
-				coverUrl = div.selectFirst("img")?.src()?.replace("-200x285", ""),
-				title = div.selectFirst("h2")?.text().orEmpty(),
-				altTitles = emptySet(),
-				rating = RATING_UNKNOWN,
-				tags = emptySet(),
-				authors = emptySet(),
-				state = null,
-				source = source,
-				contentRating = if (isNsfwSource) ContentRating.ADULT else null,
-			)
-		}
-	}
+    private suspend fun fetchAvailableTags(): Set<MangaTag> {
+        val doc = webClient.httpGet("https://$domain").parseHtml()
+        return doc.select("ul.megamenu li").mapToSet { li ->
+            val key =
+                li
+                    .selectFirstOrThrow("a")
+                    .attr("href")
+                    .removeSuffix('/')
+                    .substringAfterLast('/')
+            val name = li.selectFirstOrThrow("a").text()
+            MangaTag(
+                key = key,
+                title = name,
+                source = source,
+            )
+        }
+    }
 
-	private suspend fun fetchAvailableTags(): Set<MangaTag> {
-		val doc = webClient.httpGet("https://$domain").parseHtml()
-		return doc.select("ul.megamenu li").mapToSet { li ->
-			val key = li.selectFirstOrThrow("a").attr("href").removeSuffix('/').substringAfterLast('/')
-			val name = li.selectFirstOrThrow("a").text()
-			MangaTag(
-				key = key,
-				title = name,
-				source = source,
-			)
-		}
-	}
+    override suspend fun getDetails(manga: Manga): Manga {
+        val fullUrl = manga.url.toAbsoluteUrl(domain)
+        val doc = webClient.httpGet(fullUrl).parseHtml()
+        val author = doc.selectFirst("div.entry-content ul li:contains(Artists :) em")?.textOrNull()
+        return manga.copy(
+            description = doc.selectFirst("div.entry-content p")?.html(),
+            altTitles =
+                setOfNotNull(
+                    doc.selectFirst("div.entry-content ul li:contains(Alternative Name(s) :) em")?.textOrNull(),
+                ),
+            authors = setOfNotNull(author),
+            state = null,
+            chapters =
+                listOf(
+                    MangaChapter(
+                        id = manga.id,
+                        title = manga.title,
+                        number = 1f,
+                        volume = 0,
+                        url = fullUrl,
+                        scanlator = null,
+                        uploadDate = 0,
+                        branch = null,
+                        source = source,
+                    ),
+                ),
+        )
+    }
 
-	override suspend fun getDetails(manga: Manga): Manga {
-		val fullUrl = manga.url.toAbsoluteUrl(domain)
-		val doc = webClient.httpGet(fullUrl).parseHtml()
-		val author = doc.selectFirst("div.entry-content ul li:contains(Artists :) em")?.textOrNull()
-		return manga.copy(
-			description = doc.selectFirst("div.entry-content p")?.html(),
-			altTitles = setOfNotNull(
-				doc.selectFirst("div.entry-content ul li:contains(Alternative Name(s) :) em")?.textOrNull(),
-			),
-			authors = setOfNotNull(author),
-			state = null,
-			chapters = listOf(
-				MangaChapter(
-					id = manga.id,
-					title = manga.title,
-					number = 1f,
-					volume = 0,
-					url = fullUrl,
-					scanlator = null,
-					uploadDate = 0,
-					branch = null,
-					source = source,
-				),
-			),
-		)
-	}
-
-	override suspend fun getPages(chapter: MangaChapter): List<MangaPage> {
-		val fullUrl = chapter.url.toAbsoluteUrl(domain)
-		val doc = webClient.httpGet(fullUrl).parseHtml()
-		return doc.select(".thumbnail img, figure.gallery-item img").map { img ->
-			val url = img.requireSrc()
-			MangaPage(
-				id = generateUid(url),
-				url = url,
-				preview = null,
-				source = source,
-			)
-		}
-	}
+    override suspend fun getPages(chapter: MangaChapter): List<MangaPage> {
+        val fullUrl = chapter.url.toAbsoluteUrl(domain)
+        val doc = webClient.httpGet(fullUrl).parseHtml()
+        return doc.select(".thumbnail img, figure.gallery-item img").map { img ->
+            val url = img.requireSrc()
+            MangaPage(
+                id = generateUid(url),
+                url = url,
+                preview = null,
+                source = source,
+            )
+        }
+    }
 }

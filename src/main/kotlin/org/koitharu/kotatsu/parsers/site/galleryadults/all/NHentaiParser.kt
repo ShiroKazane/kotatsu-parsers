@@ -215,10 +215,15 @@ internal class NHentaiParser(
             val name = tag.getStringOrNull("name") ?: continue
             byType.getOrPut(type) { ArrayList() }.add(name)
         }
-        fun named(type: String, label: String): String? = byType[type]
-            ?.joinToString(", ")
-            ?.takeIf { it.isNotEmpty() }
-            ?.let { "$label: $it" }
+
+        fun named(
+            type: String,
+            label: String,
+        ): String? =
+            byType[type]
+                ?.joinToString(", ")
+                ?.takeIf { it.isNotEmpty() }
+                ?.let { "$label: $it" }
 
         val lines = ArrayList<String>(6)
         named("artist", "Artist")?.let(lines::add)

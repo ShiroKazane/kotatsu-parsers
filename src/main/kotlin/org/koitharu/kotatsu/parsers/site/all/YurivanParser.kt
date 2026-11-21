@@ -69,6 +69,7 @@ internal class YurivanParser(
     override suspend fun getFilterOptions(): MangaListFilterOptions =
         MangaListFilterOptions(
             availableTags = tagsLazy.get(),
+            availableLocales = LANGUAGE_TAGS.keys,
         )
 
     override suspend fun getListPage(
@@ -96,6 +97,9 @@ internal class YurivanParser(
                     // any-of: language and format tags are mutually exclusive, so `cs` (all-of)
                     // would return an empty list for perfectly valid filter combinations
                     addQueryParameter("tags", "ov.{${filter.tags.joinToString(",") { tag -> tag.key }}}")
+                }
+                filter.locale?.let { locale ->
+                    LANGUAGE_TAGS[locale]?.let { addQueryParameter("tags", "cs.{$it}") }
                 }
             }
         return webClient.httpGet(url, headers()).parseJsonArray().mapJSON { it.toManga() }
@@ -203,6 +207,7 @@ internal class YurivanParser(
             offset += TAGS_PAGE_SIZE
         }
         return counts.entries
+            .filterNot { it.key in LANGUAGE_TAGS.values }
             .sortedByDescending { it.value }
             .take(TAGS_LIMIT)
             .map { MangaTag(formatTag(it.key), it.key, source) }
@@ -229,7 +234,12 @@ internal class YurivanParser(
                 optJSONArray("tags")
                     ?.let { array ->
                         (0 until array.length()).mapNotNull { i ->
-                            array.optString(i).nullIfEmpty()?.let { MangaTag(formatTag(it), it, source) }
+                            val key = array.optString(i).nullIfEmpty() ?: return@mapNotNull null
+                            // chinese/japanese/korean/english describe the language, not a genre
+                            if (key in LANGUAGE_TAGS.values) {
+                                return@mapNotNull null
+                            }
+                            MangaTag(formatTag(key), key, source)
                         }
                     }.orEmpty()
                     .toSet(),
@@ -364,6 +374,16 @@ internal class YurivanParser(
             "id,title,cover_url,tags,rating_avg,chapter_count,publication_status,original_creator"
         private const val DETAILS_FIELDS =
             "$LIST_FIELDS,alt_titles,descriptions,caption,updated_at,published_at,view_count"
-        private val UUID_PATTERN = Regex("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
+
+        private val UUID_PATTERN =
+            Regex("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
+
+        /** The site keeps these in the `tags` array, but its own UI exposes them as the language facet. */
+        private val LANGUAGE_TAGS = mapOf(
+            Locale.ENGLISH to "english",
+            Locale.JAPANESE to "japanese",
+            Locale.CHINESE to "chinese",
+            Locale.KOREAN to "korean",
+        )
     }
 }

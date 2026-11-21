@@ -24,9 +24,11 @@ internal class HentaiCrot(context: MangaLoaderContext) :
 	)
 
 	override val filterCapabilities: MangaListFilterCapabilities
-		get() = MangaListFilterCapabilities(
-			isSearchSupported = true,
-		)
+		get() =
+			MangaListFilterCapabilities(
+				isSearchSupported = true,
+				isMultipleTagsSupported = true,
+			)
 
 	override suspend fun getFilterOptions() = MangaListFilterOptions(
 		availableTags = fetchAvailableTags(),
@@ -45,10 +47,10 @@ internal class HentaiCrot(context: MangaLoaderContext) :
 				}
 
 				else -> {
-
-					filter.tags.oneOrThrowIfMany()?.let {
+					if (filter.tags.isNotEmpty()) {
+						// the site accepts several categories joined with a plus sign
 						append("/category/")
-						append(it.key)
+						append(filter.tags.joinToString("+") { it.key })
 						append('/')
 					}
 
@@ -61,7 +63,7 @@ internal class HentaiCrot(context: MangaLoaderContext) :
 
 		val doc = webClient.httpGet(url).parseHtml()
 		return doc.select("div#content article").mapNotNull { div ->
-			val href = div.selectFirst("a")?.attr("href") ?: return@mapNotNull null
+			val href = div.selectFirst("a")?.attrAsRelativeUrl("href") ?: return@mapNotNull null
 			Manga(
 				id = generateUid(href),
 				url = href,

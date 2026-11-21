@@ -188,7 +188,14 @@ internal class CrotPediaParser(
 
     override suspend fun getPages(chapter: MangaChapter): List<MangaPage> {
         val doc = webClient.httpGet(chapter.url.toAbsoluteUrl(DOMAIN)).parseHtml()
-        val container = doc.selectFirst("div.reader-area") ?: return emptyList()
+        val container = doc.selectFirst("div.reader-area")
+        if (container == null) {
+            // the site shows a login form instead of the reader for gated galleries
+            if (doc.selectFirst("form#loginform") != null) {
+                throw AuthRequiredException(source)
+            }
+            return emptyList()
+        }
         return container.select("img[src]").mapNotNull { img ->
             val url = img.attr("src").nullIfEmpty() ?: return@mapNotNull null
             // the reader inserts a donation banner between the pages

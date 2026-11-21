@@ -167,8 +167,12 @@ internal class KiryuuParser(
         return Jsoup
             .parseBodyFragment(json.optString("content"))
             .select("img[src]")
-            .map { img ->
+            .mapNotNull { img ->
                 val imageUrl = img.absUrl("src").nullIfEmpty() ?: img.attr("src")
+                // the chapter markup can contain directory thumbnails like `.filerun.thumbnails`
+                if (imageUrl.substringAfterLast('.', "").lowercase() !in IMAGE_EXTENSIONS) {
+                    return@mapNotNull null
+                }
                 MangaPage(
                     id = generateUid(imageUrl),
                     url = imageUrl,
@@ -389,5 +393,6 @@ internal class KiryuuParser(
         private const val TERMS_MAX_PAGES = 10
         private val CHAPTER_ID = Regex("\\.(\\d+)/?$")
         private val AUTHOR_TAXONOMIES = setOf("series-author", "artist")
+        private val IMAGE_EXTENSIONS = setOf("jpg", "jpeg", "png", "webp", "gif", "avif")
     }
 }

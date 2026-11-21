@@ -66,30 +66,24 @@ internal class Hentalk(context: MangaLoaderContext) :
 	)
 
 	/**
-	 * The site has no tag index route, so collect the vocabulary from the browse feed,
-	 * which embeds every gallery's tags (`namespace == "tag"`).
+	 * The site has no tag index route, so collect the vocabulary from the first browse page,
+	 * which embeds every gallery's tags (`namespace == "tag"`). Additional pages only add
+	 * latency to opening the source, so a single request is used.
 	 */
 	private suspend fun fetchTags(): Set<MangaTag> {
 		val result = LinkedHashSet<MangaTag>()
-		for (page in 1..TAGS_MAX_PAGES) {
-			val url = buildString {
-				append("https://")
-				append(domain)
-				append("/__data.json?x-sveltekit-trailing-slash=1&x-sveltekit-invalidated=001")
-				if (page > 1) {
-					append("&page=")
-					append(page)
-				}
+		val url = "https://$domain/__data.json?x-sveltekit-trailing-slash=1&x-sveltekit-invalidated=001"
+		val data = runCatchingCancellable { webClient.httpGet(url).parseJson().dataArray() }
+			.getOrNull() ?: return result
+		for (i in 0 until data.length()) {
+			val item = data.optJSONObject(i) ?: continue
+			if (!item.has("namespace")) {
+				continue
 			}
-			val data = webClient.httpGet(url).parseJson().dataArray() ?: break
-			data.forEach { item ->
-				if (item is JSONObject && item.has("namespace")) {
-					val namespace = data.resolve(item.optInt("namespace"))?.toString()
-					val name = data.resolve(item.optInt("name"))?.toString()?.nullIfEmpty()
-					if (namespace == "tag" && name != null) {
-						result.add(MangaTag(key = name, title = name.toTitleCase(), source = source))
-					}
-				}
+			val namespace = data.resolve(item.optInt("namespace"))?.toString()
+			val name = data.resolve(item.optInt("name"))?.toString()?.nullIfEmpty() ?: continue
+			if (namespace == "tag") {
+				result.add(MangaTag(key = name, title = name.toTitleCase(), source = source))
 			}
 		}
 		return result

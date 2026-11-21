@@ -69,6 +69,19 @@ internal class MangaDexParser(
         keys.add(preferredServerKey)
     }
 
+    /**
+     * The site answers plain HTTP clients with a POWBlock "browser verification" page, whose
+     * only icon is the challenge's own `challenge-assets/favicon.svg`. Parsing that page
+     * yields the wrong logo, so the real icon is requested directly instead.
+     */
+    override suspend fun getFavicons(): Favicons = Favicons(
+        listOf(
+            Favicon("https://$domain/img/brand/mangadex-logo.svg", 512, "icon"),
+            Favicon("https://$domain/favicon.ico", 32, "icon"),
+        ),
+        "https://$domain",
+    )
+
     override val availableSortOrders: EnumSet<SortOrder> =
         EnumSet.of(
             SortOrder.UPDATED,

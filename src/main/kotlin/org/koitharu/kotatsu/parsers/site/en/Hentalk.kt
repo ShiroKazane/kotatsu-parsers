@@ -57,7 +57,41 @@ internal class Hentalk(context: MangaLoaderContext) :
 			isAuthorSearchSupported = true,
 		)
 
-	override suspend fun getFilterOptions() = MangaListFilterOptions() // not found any URLs for it
+	private val tagsLazy = suspendLazy { fetchTags() }
+
+	override suspend fun getFilterOptions() = MangaListFilterOptions(
+		availableTags = tagsLazy.get(),
+	)
+
+	/**
+	 * The site has no tag index route, so collect the vocabulary from the browse feed,
+	 * which embeds every gallery's tags (`namespace == "tag"`).
+	 */
+	private suspend fun fetchTags(): Set<MangaTag> {
+		val result = LinkedHashSet<MangaTag>()
+		for (page in 1..TAGS_MAX_PAGES) {
+			val url = buildString {
+				append("https://")
+				append(domain)
+				append("/__data.json?x-sveltekit-trailing-slash=1&x-sveltekit-invalidated=001")
+				if (page > 1) {
+					append("&page=")
+					append(page)
+				}
+			}
+			val data = webClient.httpGet(url).parseJson().dataArray() ?: break
+			data.forEach { item ->
+				if (item is JSONObject && item.has("namespace")) {
+					val namespace = data.resolve(item.optInt("namespace"))?.toString()
+					val name = data.resolve(item.optInt("name"))?.toString()?.nullIfEmpty()
+					if (namespace == "tag" && name != null) {
+						result.add(MangaTag(key = name, title = name.toTitleCase(), source = source))
+					}
+				}
+			}
+		}
+		return result
+	}
 
 	override suspend fun getListPage(page: Int, order: SortOrder, filter: MangaListFilter): List<Manga> {
 		val url = buildString {
@@ -211,35 +245,36 @@ internal class Hentalk(context: MangaLoaderContext) :
 	}
 
 	override suspend fun getDetails(manga: Manga): Manga {
-		val json = webClient.httpGet(manga.url.toAbsoluteUrl(domain)).parseJson()
-		val mangaId = manga.url.substringAfter("/g/").substringBefore('/')
+		val mangaId = manga.url.substringAfter("/g/").substringBefore('/').substringBefore('?')
+		val json = webClient.httpGet("/g/$mangaId/__data.json?x-sveltekit-invalidated=001".toAbsoluteUrl(domain)).parseJson()
+		val dataArray = json.dataArray() ?: return manga
+		val gallery = dataArray.optJSONObject(1) ?: return manga
 
-		val dataArray = json.getJSONArray("nodes")
-			.optJSONObject(2)
-			?.optJSONArray("data")
-			?: return manga
-
-		var createdAt = ""
-
-		for (i in 0 until dataArray.length()) {
-			val item = dataArray.opt(i)
-			if (item is JSONObject && item.has("createdAt")) {
-				val addedAt = item.getInt("createdAt")
-				if (dataArray.length() > addedAt) {
-					createdAt = dataArray.optString(addedAt, "")
-					break
+		val title = dataArray.resolve(gallery.optInt("title"))?.toString()?.nullIfEmpty() ?: manga.title
+		val description = dataArray.resolve(gallery.optInt("description"))?.toString()?.nullIfEmpty()
+		val createdAt = dataArray.resolve(gallery.optInt("createdAt"))?.toString().orEmpty()
+		val tags = LinkedHashSet<MangaTag>()
+		val authors = LinkedHashSet<String>()
+		val tagsArray = dataArray.optJSONArray(gallery.optInt("tags"))
+		if (tagsArray != null) {
+			for (i in 0 until tagsArray.length()) {
+				val tag = dataArray.optJSONObject(tagsArray.optInt(i)) ?: continue
+				val namespace = dataArray.resolve(tag.optInt("namespace"))?.toString()
+				val name = dataArray.resolve(tag.optInt("name"))?.toString()?.nullIfEmpty() ?: continue
+				when (namespace) {
+					"artist", "circle" -> authors.add(name)
+					"tag" -> tags.add(MangaTag(key = name, title = name.toTitleCase(), source = source))
 				}
 			}
 		}
 
 		val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
-		val parseTime = dateFormat.parseSafe(createdAt)
 		val chapter = MangaChapter(
 			id = generateUid("/g/$mangaId/read/1"),
 			url = "/g/$mangaId/read/1/__data.json?x-sveltekit-invalidated=011",
-			title = "Oneshot", // for all, just has 1 chapter
+			title = "Oneshot", // every gallery is a single chapter
 			number = 0f,
-			uploadDate = parseTime,
+			uploadDate = dateFormat.parseSafe(createdAt),
 			volume = 0,
 			branch = null,
 			scanlator = null,
@@ -247,77 +282,40 @@ internal class Hentalk(context: MangaLoaderContext) :
 		)
 
 		return manga.copy(
+			title = title,
+			description = description,
+			authors = authors.ifEmpty { manga.authors },
+			tags = tags.ifEmpty { manga.tags },
 			chapters = listOf(chapter),
 		)
 	}
 
 	override suspend fun getPages(chapter: MangaChapter): List<MangaPage> {
 		val json = webClient.httpGet(chapter.url.toAbsoluteUrl(domain)).parseJson()
-		val dataArray = json.getJSONArray("nodes")
-			.optJSONObject(2)
-			?.optJSONArray("data")
-			?: return emptyList()
+		val nodes = json.getJSONArray("nodes")
+		// presets (including the compressed one) live in a separate node from the gallery
+		val presets = nodes.optJSONObject(1)?.optJSONArray("data")
+		val galleryData = nodes.optJSONObject(2)?.optJSONArray("data") ?: return emptyList()
+		val gallery = galleryData.optJSONObject(1) ?: return emptyList()
 
-		var compressID = ""
-		for (i in 0 until dataArray.length()) {
-			val item = dataArray.opt(i)
-			if (item is JSONObject && item.has("hash")) {
-				if (i < 20) {
-					val hashValue = dataArray.getString(item.getInt("hash"))
-					if (hashValue.length == 8) {
-						compressID = hashValue
-						break
-					}
-				}
-			}
+		val galleryHash = galleryData.resolve(gallery.optInt("hash"))?.toString().orEmpty()
+		val compressHash = presets?.let { data ->
+			val defaults = data.optJSONObject(0) ?: return@let null
+			val defaultPreset = data.optJSONObject(defaults.optInt("defaultPreset")) ?: return@let null
+			data.resolve(defaultPreset.optInt("hash"))?.toString()?.nullIfEmpty()
 		}
 
-		var hashID = ""
-		for (i in 0 until dataArray.length()) {
-			val item = dataArray.opt(i)
-			if (item is JSONObject && item.has("hash") && item.has("id")) {
-				val hashIndex = item.getInt("hash")
-				hashID = dataArray.getString(hashIndex)
-				break
-			}
-		}
-
-		if (hashID.isEmpty()) {
-			for (i in 0 until dataArray.length()) {
-				val item = dataArray.opt(i)
-				if (item is JSONObject && item.has("gallery")) {
-					val galleryIndex = item.getInt("gallery")
-					val galleryTemplate = dataArray.optJSONObject(galleryIndex)
-					if (galleryTemplate != null && galleryTemplate.has("hash")) {
-						val hashIndex = galleryTemplate.getInt("hash")
-						hashID = dataArray.getString(hashIndex)
-						break
-					}
-				}
-			}
-		}
-
-		val imgList = ArrayList<String>(dataArray.length())
-		for (i in 0 until dataArray.length()) {
-			val item = dataArray.opt(i)
-			if (item is JSONObject && item.has("filename")) {
-				val filenameIndex = item.getInt("filename")
-				if (dataArray.length() > filenameIndex) {
-					val filename = dataArray.optString(filenameIndex, "")
-					if (filename.isNotEmpty()) {
-						imgList.add(filename)
-					}
-				}
-			}
-		}
-
+		val images = galleryData.optJSONArray(gallery.optInt("images")) ?: return emptyList()
 		val server = config[preferredServerKey] ?: SERVER_DATA
-		return imgList.map { imgEx ->
-			val baseUrl = "https://$domain/image/$hashID/$imgEx"
-			val imageUrl = when (server) {
-				SERVER_DATA -> baseUrl
-				SERVER_DATA_SAVER -> baseUrl + SERVER_DATA_SAVER + compressID
-				else -> baseUrl
+		return (0 until images.length()).mapNotNull { i ->
+			val image = galleryData.optJSONObject(images.optInt(i)) ?: return@mapNotNull null
+			val filename = galleryData.resolve(image.optInt("filename"))?.toString()?.nullIfEmpty()
+				?: return@mapNotNull null
+			val baseUrl = "https://$domain/image/$galleryHash/$filename"
+			val imageUrl = if (server == SERVER_DATA_SAVER && compressHash != null) {
+				baseUrl + SERVER_DATA_SAVER + compressHash
+			} else {
+				baseUrl
 			}
 
 			MangaPage(
@@ -329,5 +327,13 @@ internal class Hentalk(context: MangaLoaderContext) :
 		}
 	}
 
+	private companion object {
+		private const val TAGS_MAX_PAGES = 4
+	}
+
 	private fun space2plus(input: String): String = input.replace(' ', '+')
+
+	private fun JSONObject.dataArray(): JSONArray? = getJSONArray("nodes").optJSONObject(2)?.optJSONArray("data")
+
+	private fun JSONArray.resolve(index: Int): Any? = if (index in 0 until length()) opt(index) else null
 }

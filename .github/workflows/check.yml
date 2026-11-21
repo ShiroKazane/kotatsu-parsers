@@ -30,9 +30,11 @@ env:
   GRADLE_OPTS: >-
     -Dorg.gradle.workers.max=4
     -Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g
-  # Only live-test the parsers under active development
+  # Only live-test the parsers under active development.
+  # CROTPEDIA is excluded: it is Cloudflare-gated, slow from datacenter IPs,
+  # and needs an account for much of its content, so it times out here.
   PARSERS_TEST_SOURCES: >-
-    DOUJINDESU,KIRYUU,MANGADEX,YURIVAN,HENTAICROT,CROTPEDIA,HENTALK
+    DOUJINDESU,KIRYUU,MANGADEX,YURIVAN,HENTAICROT,HENTALK
 
 concurrency:
   group: check-${{ github.ref }}

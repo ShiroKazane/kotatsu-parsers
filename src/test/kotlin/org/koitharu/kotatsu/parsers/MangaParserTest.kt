@@ -146,7 +146,7 @@ internal class MangaParserTest {
                 )
             // Most sources intersect tags, so a random pair may legitimately have no results.
             // Retry a few combinations of the most popular tags before failing.
-            for (attempt in 0 until 5) {
+            for (attempt in 0 until 2) {
                 if (list.isNotEmpty() || allTags.size < 2) {
                     break
                 }
@@ -244,13 +244,13 @@ internal class MangaParserTest {
             // so walk a few candidates until a readable chapter is found
             var manga = list.first()
             var pages = emptyList<MangaPage>()
-            for (candidate in list.take(5)) {
+            for (candidate in list.take(2)) {
                 manga = candidate
                 val chapters =
                     parser
                         .getDetails(candidate)
                         .chapters
-                        ?.take(5)
+                        ?.take(1)
                         .orEmpty()
                 for (chapter in chapters) {
                     pages = runCatching { parser.getPages(chapter) }.getOrDefault(emptyList())

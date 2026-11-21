@@ -40,7 +40,7 @@ import java.util.TimeZone
  * (`story_pages.object_key` served from `img.yurivan.com`). `text` and `video` stories
  * cannot be represented with the image-based [org.koitharu.kotatsu.parsers.model.MangaPage] model.
  */
-@MangaSourceParser("YURIVAN", "Yurivan", "en")
+@MangaSourceParser("YURIVAN", "Yurivan")
 internal class YurivanParser(
     context: MangaLoaderContext,
 ) : PagedMangaParser(context, MangaParserSource.YURIVAN, pageSize = PAGE_SIZE) {
@@ -379,11 +379,12 @@ internal class YurivanParser(
             Regex("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
 
         /** The site keeps these in the `tags` array, but its own UI exposes them as the language facet. */
-        private val LANGUAGE_TAGS = mapOf(
-            Locale.ENGLISH to "english",
-            Locale.JAPANESE to "japanese",
-            Locale.CHINESE to "chinese",
-            Locale.KOREAN to "korean",
-        )
+        private val LANGUAGE_TAGS =
+            mapOf(
+                Locale.ENGLISH to "english",
+                Locale.JAPANESE to "japanese",
+                Locale.CHINESE to "chinese",
+                Locale.KOREAN to "korean",
+            )
     }
 }

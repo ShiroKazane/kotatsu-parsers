@@ -3,6 +3,7 @@ package org.koitharu.kotatsu.parsers.site.en
 import androidx.collection.ArraySet
 import androidx.collection.MutableIntList
 import androidx.collection.MutableIntObjectMap
+import org.json.JSONArray
 import org.json.JSONObject
 import org.jsoup.HttpStatusException
 import org.koitharu.kotatsu.parsers.MangaLoaderContext
@@ -13,6 +14,7 @@ import org.koitharu.kotatsu.parsers.exception.ParseException
 import org.koitharu.kotatsu.parsers.model.*
 import org.koitharu.kotatsu.parsers.network.UserAgents
 import org.koitharu.kotatsu.parsers.util.*
+import org.koitharu.kotatsu.parsers.util.suspendlazy.suspendLazy
 import java.net.HttpURLConnection
 import java.text.SimpleDateFormat
 import java.util.*

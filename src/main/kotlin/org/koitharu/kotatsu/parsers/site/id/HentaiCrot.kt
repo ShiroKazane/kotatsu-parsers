@@ -270,7 +270,7 @@ internal class HentaiCrot(
                     control.selectFirst("input[name=genre[]]")?.attr("value")?.nullIfEmpty()
                         ?: return@mapNotNullToSet null
                 val name = control.selectFirst("label")?.textOrNull() ?: return@mapNotNullToSet null
-                MangaTag(key = key, title = name, source = source)
+                MangaTag(key = key, title = name.toTitleCase(), source = source)
             }
 
     private fun parseChapterNumber(
